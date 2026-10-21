@@ -1,16 +1,15 @@
-cat << 'EOF' > index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NaviFree - Turn-by-Turn Navigation</title>
+    <title>NaviFree - Turn-by-Turn Navigation with Valhalla Routing & Toll-Free Options</title>
     
     <!-- MapLibre GL CSS & JS -->
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     
-    <!-- Tailwind CSS for UI -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Lucide Icons -->
@@ -34,7 +33,6 @@ cat << 'EOF' > index.html
             bottom: 0;
         }
 
-        /* Custom scrollbar for instruction list */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
@@ -46,41 +44,39 @@ cat << 'EOF' > index.html
             border-radius: 3px;
         }
 
-        /* Pulsing dot for GPS location marker */
         .user-location-marker {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             background-color: #3B82F6;
             border: 3px solid #FFFFFF;
             border-radius: 50%;
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.9);
             position: relative;
         }
         .user-location-marker::after {
             content: '';
-            width: 40px;
-            height: 40px;
-            background-color: rgba(59, 130, 246, 0.3);
+            width: 44px;
+            height: 44px;
+            background-color: rgba(59, 130, 246, 0.35);
             border-radius: 50%;
             position: absolute;
-            top: -13px;
-            left: -13px;
-            animation: pulse 2s infinite;
+            top: -14px;
+            left: -14px;
+            animation: pulse 2s infinite ease-in-out;
         }
         @keyframes pulse {
             0% { transform: scale(0.5); opacity: 1; }
-            100% { transform: scale(1.3); opacity: 0; }
+            100% { transform: scale(1.4); opacity: 0; }
         }
 
-        /* Heading Cone Indicator */
         .heading-indicator {
             width: 0;
             height: 0;
-            border-left: 12px solid transparent;
-            border-right: 12px solid transparent;
-            border-bottom: 24px solid rgba(59, 130, 246, 0.4);
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 22px solid rgba(59, 130, 246, 0.6);
             position: absolute;
-            top: -20px;
+            top: -18px;
             left: -2px;
             transform-origin: bottom center;
         }
@@ -91,12 +87,12 @@ cat << 'EOF' > index.html
     <!-- Map Container -->
     <div id="map"></div>
 
-    <!-- Geolocation Status / Permission Alert Toast -->
+    <!-- Geolocation Status Toast -->
     <div id="geo-status-toast" class="absolute top-20 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-96 z-30 hidden transition-all duration-300">
         <div class="bg-amber-600/95 backdrop-blur-md text-white px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between border border-amber-400/40 text-xs">
             <div class="flex items-center gap-2.5">
                 <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-200 shrink-0"></i>
-                <span id="geo-status-text">Requesting GPS location permissions...</span>
+                <span id="geo-status-text">Requesting location permissions...</span>
             </div>
             <button id="close-geo-toast-btn" class="p-1 hover:bg-amber-700/50 rounded-lg">
                 <i data-lucide="x" class="w-4 h-4"></i>
@@ -104,7 +100,7 @@ cat << 'EOF' > index.html
         </div>
     </div>
 
-    <!-- Top Floating Header Search Panel -->
+    <!-- Top Search Panel -->
     <div id="search-panel" class="absolute top-4 left-4 right-4 md:left-6 md:right-auto md:w-96 z-10 space-y-2">
         <div class="bg-gray-800/95 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl p-2.5 flex items-center gap-2">
             <div class="p-2 text-blue-400">
@@ -113,18 +109,17 @@ cat << 'EOF' > index.html
             <input id="search-input" type="text" placeholder="Search address or location..." 
                    class="w-full bg-transparent text-white placeholder-gray-400 focus:outline-none text-sm py-1"
                    autocomplete="off" />
-            <div id="country-badge" class="px-2 py-0.5 bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-md text-[10px] font-bold tracking-wide uppercase shrink-0">MY</div>
+            <div id="country-badge" title="Auto-Detected Country" class="px-2 py-0.5 bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-md text-[10px] font-bold tracking-wide uppercase shrink-0">MY</div>
             <button id="clear-search-btn" class="p-1 text-gray-400 hover:text-white hidden">
                 <i data-lucide="x" class="w-4 h-4"></i>
             </button>
         </div>
 
-        <!-- Autocomplete Suggestions Dropdown -->
         <div id="search-results" class="bg-gray-800/95 backdrop-blur-md border border-gray-700/80 rounded-xl shadow-2xl max-h-60 overflow-y-auto hidden custom-scrollbar">
         </div>
     </div>
 
-    <!-- Active Navigation Top Banner (Turn Instruction HUD) -->
+    <!-- Turn Guidance HUD -->
     <div id="nav-banner" class="absolute top-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[480px] z-20 hidden">
         <div class="bg-blue-600/95 backdrop-blur-md text-white rounded-2xl shadow-2xl p-4 flex items-center justify-between border border-blue-400/30">
             <div class="flex items-center gap-4">
@@ -143,15 +138,18 @@ cat << 'EOF' > index.html
         </div>
     </div>
 
-    <!-- Right Quick Controls Stack -->
+    <!-- Quick Action Controls Column -->
     <div class="absolute right-4 top-20 md:top-6 z-10 flex flex-col gap-2">
-        <button id="locate-btn" title="Center on Location" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-white rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
+        <button id="traffic-btn" title="Toggle Real-Time Traffic Overlay" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-amber-400 rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
+            <i data-lucide="traffic-cone" class="w-5 h-5"></i>
+        </button>
+        <button id="locate-btn" title="Center on My Location" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-white rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
             <i data-lucide="crosshair" class="w-5 h-5"></i>
         </button>
-        <button id="orient-btn" title="Toggle Heading Orientation" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-white rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
+        <button id="orient-btn" title="Toggle Orientation" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-white rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
             <i data-lucide="compass" class="w-5 h-5"></i>
         </button>
-        <button id="theme-btn" title="Toggle Map Style (Light/Dark)" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-white rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
+        <button id="theme-btn" title="Toggle Map Style" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-white rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
             <i data-lucide="moon" class="w-5 h-5"></i>
         </button>
         <button id="voice-btn" title="Toggle Voice Guidance" class="p-3 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-md text-blue-400 rounded-xl shadow-lg border border-gray-700/80 transition active:scale-95">
@@ -159,36 +157,39 @@ cat << 'EOF' > index.html
         </button>
     </div>
 
-    <!-- Bottom Action Card (Route Comparison & Directions List) -->
+    <!-- Bottom Route Selection Card -->
     <div id="bottom-card" class="absolute bottom-6 left-4 right-4 md:left-6 md:w-[420px] z-10 hidden">
         <div class="bg-gray-800/95 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl p-4 flex flex-col gap-3">
-            <!-- Route Header -->
             <div class="flex justify-between items-start">
                 <div>
                     <h3 id="route-dest-title" class="font-bold text-white text-base line-clamp-1">Destination Selected</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Select your preferred route option below</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Select route option below</p>
                 </div>
                 <button id="close-route-btn" class="p-1 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
-            <!-- Route Selection Cards (Fastest vs Toll-Free) -->
+            <!-- Route Selection Cards: FASTEST (Blue) vs TOLL-FREE (Green) -->
             <div class="grid grid-cols-2 gap-2">
-                <!-- Fastest Route Card -->
-                <button id="select-fastest-route-btn" class="p-3 rounded-xl border-2 border-blue-500 bg-blue-500/10 flex flex-col items-start transition text-left relative overflow-hidden">
+                <button id="select-fastest-route-btn" class="p-3 rounded-xl border-2 border-blue-500 bg-blue-500/15 flex flex-col items-start transition text-left relative overflow-hidden ring-2 ring-blue-500/50">
                     <div class="flex items-center justify-between w-full">
-                        <span class="text-[10px] uppercase font-bold tracking-wider text-blue-400">Fastest</span>
-                        <span id="fastest-toll-badge" class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[9px] font-semibold">Tolls</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-blue-400 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Fastest
+                        </span>
+                        <span id="fastest-toll-badge" class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[9px] font-semibold">Highway</span>
                     </div>
                     <div id="fastest-duration" class="text-lg font-extrabold text-white mt-1">-- min</div>
                     <div id="fastest-distance" class="text-xs text-gray-300">-- km</div>
                 </button>
 
-                <!-- Toll-Free Route Card -->
                 <button id="select-tollfree-route-btn" class="p-3 rounded-xl border-2 border-gray-700 bg-gray-700/30 flex flex-col items-start transition text-left relative overflow-hidden">
                     <div class="flex items-center justify-between w-full">
-                        <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-400">Toll-Free</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Toll-Free
+                        </span>
                         <span class="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[9px] font-semibold">Free</span>
                     </div>
                     <div id="tollfree-duration" class="text-lg font-extrabold text-white mt-1">-- min</div>
@@ -197,17 +198,14 @@ cat << 'EOF' > index.html
                 </button>
             </div>
 
-            <!-- Route Steps Preview Toggle -->
             <button id="toggle-steps-btn" class="flex items-center justify-between py-2 px-3 bg-gray-700/50 hover:bg-gray-700 text-xs font-medium text-gray-300 rounded-xl transition">
                 <span>View Turn-by-Turn Steps</span>
                 <i data-lucide="chevron-down" id="steps-chevron" class="w-4 h-4 transition-transform"></i>
             </button>
 
-            <!-- Turn-by-Turn Instruction List -->
             <div id="steps-list" class="max-h-40 overflow-y-auto space-y-2 hidden pr-1 custom-scrollbar">
             </div>
 
-            <!-- Main Action Buttons -->
             <div class="grid grid-cols-2 gap-2 pt-1">
                 <button id="sim-btn" class="py-2.5 px-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl text-xs font-bold tracking-wide flex items-center justify-center gap-1.5 transition active:scale-95">
                     <i data-lucide="play-circle" class="w-4 h-4"></i>
@@ -221,7 +219,7 @@ cat << 'EOF' > index.html
         </div>
     </div>
 
-    <!-- Active Navigation Control Floating Button -->
+    <!-- Active Navigation Exit Control Button -->
     <div id="active-nav-controls" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 hidden flex items-center gap-3">
         <button id="stop-nav-btn" class="py-3 px-6 bg-red-600 hover:bg-red-500 text-white rounded-full font-bold text-sm shadow-xl flex items-center gap-2 border border-red-400/40 active:scale-95">
             <i data-lucide="square" class="w-4 h-4 fill-current"></i>
@@ -230,26 +228,25 @@ cat << 'EOF' > index.html
     </div>
 
     <script>
-        // State Management
         const state = {
             map: null,
-            userCoords: [101.6869, 3.1390], // Default fallback: Kuala Lumpur
-            userCountryCode: 'MY', // Auto-detected country code
+            userCoords: [101.6869, 3.1390],
+            userCountryCode: 'MY',
             destinationCoords: null,
             routes: {
                 fastest: null,
                 tollFree: null
             },
-            selectedRouteType: 'fastest', // 'fastest' or 'tollFree'
+            selectedRouteType: 'fastest',
             currentStepIndex: 0,
             isNavigating: false,
             isSimulating: false,
             simulationInterval: null,
             simStepIndex: 0,
-            simProgress: 0,
             voiceEnabled: true,
             followUser: true,
             darkTheme: true,
+            showTraffic: false,
             userMarker: null,
             destMarker: null,
             lastSpokenStep: -1,
@@ -257,7 +254,6 @@ cat << 'EOF' > index.html
             hasLocPermission: false
         };
 
-        // CartoDB Tile Styles
         const MAP_STYLES = {
             dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
             light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
@@ -278,7 +274,6 @@ cat << 'EOF' > index.html
             setupGeolocation();
         });
 
-        // Detect user country using free IP lookup API with graceful fallback
         async function detectUserCountry() {
             try {
                 const res = await fetch('https://ipapi.co/json/');
@@ -288,20 +283,10 @@ cat << 'EOF' > index.html
                     document.getElementById('country-badge').textContent = state.userCountryCode;
                 }
             } catch (e) {
-                try {
-                    const fallbackRes = await fetch('https://ip-api.com/json/');
-                    const fallbackData = await fallbackRes.json();
-                    if (fallbackData && fallbackData.countryCode) {
-                        state.userCountryCode = fallbackData.countryCode.toUpperCase();
-                        document.getElementById('country-badge').textContent = state.userCountryCode;
-                    }
-                } catch (err) {
-                    console.log('Country detection defaulted to MY');
-                }
+                console.log('Defaulted to MY country code');
             }
         }
 
-        // Initialize MapLibre Engine safely
         function initMap() {
             state.map = new maplibregl.Map({
                 container: 'map',
@@ -317,12 +302,49 @@ cat << 'EOF' > index.html
 
             state.map.on('load', () => {
                 createUserMarker();
-                
+                setupTrafficLayer();
+
                 state.map.on('click', (e) => {
                     if (state.isNavigating) return;
                     setDestination([e.lngLat.lng, e.lngLat.lat], "Selected Location");
                 });
             });
+        }
+
+        function setupTrafficLayer() {
+            state.map.addSource('realtime-traffic', {
+                'type': 'raster',
+                'tiles': [
+                    'https://a.traffic.maps.vic.gov.au/tiles/{z}/{x}/{y}.png',
+                    'https://b.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png'
+                ],
+                'tileSize': 256,
+                'maxzoom': 19
+            });
+
+            state.map.addLayer({
+                'id': 'traffic-layer',
+                'type': 'raster',
+                'source': 'realtime-traffic',
+                'layout': { 'visibility': 'none' },
+                'paint': { 'raster-opacity': 0.75 }
+            });
+        }
+
+        function toggleTrafficOverlay() {
+            state.showTraffic = !state.showTraffic;
+            const btn = document.getElementById('traffic-btn');
+            
+            if (state.map.getLayer('traffic-layer')) {
+                state.map.setLayoutProperty('traffic-layer', 'visibility', state.showTraffic ? 'visible' : 'none');
+            }
+
+            btn.classList.toggle('bg-amber-500', state.showTraffic);
+            btn.classList.toggle('text-gray-900', state.showTraffic);
+            btn.classList.toggle('bg-gray-800/90', !state.showTraffic);
+            btn.classList.toggle('text-amber-400', !state.showTraffic);
+            
+            showGeoToast(state.showTraffic ? "Real-time traffic overlay enabled." : "Traffic overlay disabled.");
         }
 
         function createUserMarker() {
@@ -362,14 +384,13 @@ cat << 'EOF' > index.html
                 clearSearchBtn.classList.add('hidden');
             });
 
-            // Map Quick Buttons
+            document.getElementById('traffic-btn').addEventListener('click', toggleTrafficOverlay);
             document.getElementById('locate-btn').addEventListener('click', centerOnUser);
             document.getElementById('orient-btn').addEventListener('click', toggleMapOrientation);
             document.getElementById('theme-btn').addEventListener('click', toggleMapTheme);
             document.getElementById('voice-btn').addEventListener('click', toggleVoiceGuidance);
             document.getElementById('close-geo-toast-btn').addEventListener('click', hideGeoToast);
 
-            // Route Actions & Route Switching
             document.getElementById('close-route-btn').addEventListener('click', clearRoute);
             document.getElementById('toggle-steps-btn').addEventListener('click', toggleStepsList);
             document.getElementById('select-fastest-route-btn').addEventListener('click', () => switchSelectedRoute('fastest'));
@@ -387,13 +408,9 @@ cat << 'EOF' > index.html
                         const coords = [pos.coords.longitude, pos.coords.latitude];
                         updateUserPosition(coords, pos.coords.heading, pos.coords.speed);
                     },
-                    (err) => {
-                        console.warn('Geolocation warning/error:', err.message);
-                    },
+                    (err) => console.warn('GPS Notice:', err.message),
                     { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
                 );
-            } else {
-                showGeoToast("Geolocation is not supported by your browser.");
             }
         }
 
@@ -405,14 +422,13 @@ cat << 'EOF' > index.html
                 return;
             }
 
-            showGeoToast("Locating your exact position...");
+            showGeoToast("Locating position...");
 
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     state.hasLocPermission = true;
                     hideGeoToast();
                     const coords = [pos.coords.longitude, pos.coords.latitude];
-                    
                     updateUserPosition(coords, pos.coords.heading, pos.coords.speed);
 
                     state.map.flyTo({ 
@@ -422,17 +438,7 @@ cat << 'EOF' > index.html
                         essential: true 
                     });
                 },
-                (err) => {
-                    let errMsg = "Unable to access your location.";
-                    if (err.code === err.PERMISSION_DENIED) {
-                        errMsg = "Location permission denied. Please enable location access in browser settings.";
-                    } else if (err.code === err.POSITION_UNAVAILABLE) {
-                        errMsg = "Location unavailable. Please ensure device GPS is turned on.";
-                    } else if (err.code === err.TIMEOUT) {
-                        errMsg = "Location request timed out. Please try again.";
-                    }
-                    showGeoToast(errMsg);
-                },
+                (err) => showGeoToast("Unable to access GPS location."),
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
         }
@@ -480,12 +486,6 @@ cat << 'EOF' > index.html
                 let response = await fetch(primaryUrl);
                 let data = await response.json();
 
-                if (!data || data.length === 0) {
-                    const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
-                    response = await fetch(fallbackUrl);
-                    data = await response.json();
-                }
-
                 renderSearchResults(data);
             } catch (err) {
                 console.error("Geocoding failed:", err);
@@ -504,14 +504,12 @@ cat << 'EOF' > index.html
             results.forEach(res => {
                 const item = document.createElement('div');
                 item.className = 'p-3 hover:bg-gray-700/80 cursor-pointer text-xs border-b border-gray-700/50 last:border-0 flex items-center gap-2.5';
-                
                 const primaryName = res.display_name.split(',')[0];
-                const countryCode = res.address && res.address.country_code ? res.address.country_code.toUpperCase() : state.userCountryCode;
 
                 item.innerHTML = `
                     <i data-lucide="map-pin" class="w-4 h-4 text-blue-400 shrink-0"></i>
                     <div class="flex-1 overflow-hidden">
-                        <div class="font-semibold text-white truncate">${primaryName} <span class="text-[10px] text-blue-300 font-normal ml-1">(${countryCode})</span></div>
+                        <div class="font-semibold text-white truncate">${primaryName}</div>
                         <div class="text-[10px] text-gray-400 truncate">${res.display_name}</div>
                     </div>
                 `;
@@ -543,41 +541,94 @@ cat << 'EOF' > index.html
             await calculateRoutes();
         }
 
+        // --- MIGRATED TO VALHALLA ROUTING API (PUBLIC COMMUNITY SERVER) ---
         async function calculateRoutes() {
             if (!state.userCoords || !state.destinationCoords) return;
 
-            const baseParams = `${state.userCoords[0]},${state.userCoords[1]};${state.destinationCoords[0]},${state.destinationCoords[1]}?overview=full&geometries=geojson&steps=true`;
-            
-            const fastestUrl = `https://router.project-osrm.org/route/v1/driving/${baseParams}`;
-            const tollFreeUrl = `https://router.project-osrm.org/route/v1/driving/${baseParams}&exclude=toll`;
+            const startLng = state.userCoords[0];
+            const startLat = state.userCoords[1];
+            const endLng = state.destinationCoords[0];
+            const endLat = state.destinationCoords[1];
+
+            const valhallaUrl = "https://valhalla1.openstreetmap.de/route";
+
+            // 1. Request Fastest Route (default auto costing with alternatives enabled)
+            const fastestBody = {
+                locations: [
+                    { lat: startLat, lon: startLng },
+                    { lat: endLat, lon: endLng }
+                ],
+                costing: "auto",
+                alternatives: 1,
+                format: "osrm",
+                directions_options: { units: "kilometers" }
+            };
+
+            // 2. Request Toll-Free Route (dynamic costing: avoid tolls and highways)
+            const tollFreeBody = {
+                locations: [
+                    { lat: startLat, lon: startLng },
+                    { lat: endLat, lon: endLng }
+                ],
+                costing: "auto",
+                costing_options: {
+                    auto: {
+                        use_tolls: 0.0,
+                        use_highways: 0.2
+                    }
+                },
+                format: "osrm",
+                directions_options: { units: "kilometers" }
+            };
 
             try {
                 const [fastestRes, tollFreeRes] = await Promise.all([
-                    fetch(fastestUrl).then(r => r.json()),
-                    fetch(tollFreeUrl).then(r => r.json()).catch(() => null)
+                    fetch(valhallaUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(fastestBody)
+                    }).then(r => r.json()),
+                    fetch(valhallaUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(tollFreeBody)
+                    }).then(r => r.json())
                 ]);
 
-                if (!fastestRes.routes || fastestRes.routes.length === 0) return;
+                if (fastestRes.routes && fastestRes.routes.length > 0) {
+                    state.routes.fastest = fastestRes.routes[0];
+                    if (fastestRes.routes.length > 1) {
+                        state.routes.tollFree = fastestRes.routes[1];
+                    }
+                }
 
-                state.routes.fastest = fastestRes.routes[0];
-                state.routes.tollFree = (tollFreeRes && tollFreeRes.routes && tollFreeRes.routes.length > 0) 
-                    ? tollFreeRes.routes[0] 
-                    : fastestRes.routes[0];
+                if (tollFreeRes.routes && tollFreeRes.routes.length > 0) {
+                    state.routes.tollFree = tollFreeRes.routes[0];
+                }
+
+                if (!state.routes.fastest) return;
+                if (!state.routes.tollFree) {
+                    state.routes.tollFree = state.routes.fastest;
+                }
 
                 state.selectedRouteType = 'fastest';
                 renderRouteLines();
                 updateRouteUI();
             } catch (err) {
-                console.error("Routing request failed:", err);
+                console.error("Valhalla routing request failed:", err);
             }
         }
 
         function renderRouteLines() {
-            const activeRoute = state.routes[state.selectedRouteType];
-            const inactiveRoute = state.selectedRouteType === 'fastest' ? state.routes.tollFree : state.routes.fastest;
+            const isFastest = state.selectedRouteType === 'fastest';
+            const activeRoute = isFastest ? state.routes.fastest : state.routes.tollFree;
+            const inactiveRoute = isFastest ? state.routes.tollFree : state.routes.fastest;
+
+            const activeColor = isFastest ? '#3B82F6' : '#10B981';
 
             if (state.map.getSource('route-active')) {
                 state.map.getSource('route-active').setData({ type: 'Feature', geometry: activeRoute.geometry });
+                state.map.setPaintProperty('route-line-active', 'line-color', activeColor);
             } else {
                 state.map.addSource('route-active', { type: 'geojson', data: { type: 'Feature', geometry: activeRoute.geometry } });
                 state.map.addLayer({
@@ -585,7 +636,7 @@ cat << 'EOF' > index.html
                     type: 'line',
                     source: 'route-active',
                     layout: { 'line-join': 'round', 'line-cap': 'round' },
-                    paint: { 'line-color': '#3B82F6', 'line-width': 7, 'line-opacity': 0.9 }
+                    paint: { 'line-color': activeColor, 'line-width': 8, 'line-opacity': 0.95 }
                 });
             }
 
@@ -599,7 +650,7 @@ cat << 'EOF' > index.html
                         type: 'line',
                         source: 'route-alt',
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
-                        paint: { 'line-color': '#9CA3AF', 'line-width': 5, 'line-opacity': 0.5 }
+                        paint: { 'line-color': '#6B7280', 'line-width': 5, 'line-opacity': 0.45 }
                     }, 'route-line-active');
                 }
             }
@@ -616,11 +667,11 @@ cat << 'EOF' > index.html
             const tollFreeBtn = document.getElementById('select-tollfree-route-btn');
 
             if (routeType === 'fastest') {
-                fastestBtn.className = 'p-3 rounded-xl border-2 border-blue-500 bg-blue-500/10 flex flex-col items-start transition text-left relative overflow-hidden';
+                fastestBtn.className = 'p-3 rounded-xl border-2 border-blue-500 bg-blue-500/15 flex flex-col items-start transition text-left relative overflow-hidden ring-2 ring-blue-500/50';
                 tollFreeBtn.className = 'p-3 rounded-xl border-2 border-gray-700 bg-gray-700/30 flex flex-col items-start transition text-left relative overflow-hidden';
             } else {
                 fastestBtn.className = 'p-3 rounded-xl border-2 border-gray-700 bg-gray-700/30 flex flex-col items-start transition text-left relative overflow-hidden';
-                tollFreeBtn.className = 'p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 flex flex-col items-start transition text-left relative overflow-hidden';
+                tollFreeBtn.className = 'p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 flex flex-col items-start transition text-left relative overflow-hidden ring-2 ring-emerald-500/50';
             }
 
             renderRouteLines();
@@ -647,21 +698,11 @@ cat << 'EOF' > index.html
             const diffEl = document.getElementById('tollfree-diff');
             
             if (diffMin > 0) {
-                diffEl.textContent = `+${diffMin} min longer`;
+                diffEl.textContent = `+${diffMin} min detour`;
                 diffEl.className = "text-[10px] text-amber-400 font-medium mt-0.5";
             } else {
                 diffEl.textContent = "Same duration";
                 diffEl.className = "text-[10px] text-emerald-400 font-medium mt-0.5";
-            }
-
-            const hasTolls = fastest.legs[0].steps.some(step => step.intersections && step.intersections.some(i => i.classes && i.classes.includes('toll')));
-            const tollBadge = document.getElementById('fastest-toll-badge');
-            if (!hasTolls) {
-                tollBadge.textContent = "No Tolls";
-                tollBadge.className = "px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[9px] font-semibold";
-            } else {
-                tollBadge.textContent = "Toll Road";
-                tollBadge.className = "px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[9px] font-semibold";
             }
 
             updateStepsListUI(state.routes[state.selectedRouteType]);
@@ -773,7 +814,7 @@ cat << 'EOF' > index.html
                 const next = coordinates[state.simStepIndex + 1];
 
                 const bearing = calculateBearing(curr, next);
-                const simulatedSpeedMs = 13.8; // ~50 km/h
+                const simulatedSpeedMs = 13.8;
 
                 updateUserPosition(next, bearing, simulatedSpeedMs);
                 state.simStepIndex++;
@@ -860,5 +901,3 @@ cat << 'EOF' > index.html
     </script>
 </body>
 </html>
-EOF
-
