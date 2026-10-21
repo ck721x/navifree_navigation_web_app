@@ -1,3 +1,4 @@
+cat << 'EOF' > index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -109,9 +110,10 @@
             <div class="p-2 text-blue-400">
                 <i data-lucide="search" class="w-5 h-5"></i>
             </div>
-            <input id="search-input" type="text" placeholder="Search address or building in Malaysia..." 
+            <input id="search-input" type="text" placeholder="Search address or location..." 
                    class="w-full bg-transparent text-white placeholder-gray-400 focus:outline-none text-sm py-1"
                    autocomplete="off" />
+            <div id="country-badge" class="px-2 py-0.5 bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-md text-[10px] font-bold tracking-wide uppercase shrink-0">MY</div>
             <button id="clear-search-btn" class="p-1 text-gray-400 hover:text-white hidden">
                 <i data-lucide="x" class="w-4 h-4"></i>
             </button>
@@ -157,21 +159,41 @@
         </button>
     </div>
 
-    <!-- Bottom Action Card (Route Preview & Directions List) -->
-    <div id="bottom-card" class="absolute bottom-6 left-4 right-4 md:left-6 md:w-96 z-10 hidden">
+    <!-- Bottom Action Card (Route Comparison & Directions List) -->
+    <div id="bottom-card" class="absolute bottom-6 left-4 right-4 md:left-6 md:w-[420px] z-10 hidden">
         <div class="bg-gray-800/95 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl p-4 flex flex-col gap-3">
-            <!-- Route Summary Header -->
+            <!-- Route Header -->
             <div class="flex justify-between items-start">
                 <div>
                     <h3 id="route-dest-title" class="font-bold text-white text-base line-clamp-1">Destination Selected</h3>
-                    <div class="flex items-center gap-2 mt-0.5">
-                        <span id="route-duration" class="text-emerald-400 font-bold text-lg">-- min</span>
-                        <span class="text-gray-400 text-sm">•</span>
-                        <span id="route-distance" class="text-gray-300 text-sm font-medium">-- km</span>
-                    </div>
+                    <p class="text-xs text-gray-400 mt-0.5">Select your preferred route option below</p>
                 </div>
                 <button id="close-route-btn" class="p-1 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700">
                     <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Route Selection Cards (Fastest vs Toll-Free) -->
+            <div class="grid grid-cols-2 gap-2">
+                <!-- Fastest Route Card -->
+                <button id="select-fastest-route-btn" class="p-3 rounded-xl border-2 border-blue-500 bg-blue-500/10 flex flex-col items-start transition text-left relative overflow-hidden">
+                    <div class="flex items-center justify-between w-full">
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-blue-400">Fastest</span>
+                        <span id="fastest-toll-badge" class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[9px] font-semibold">Tolls</span>
+                    </div>
+                    <div id="fastest-duration" class="text-lg font-extrabold text-white mt-1">-- min</div>
+                    <div id="fastest-distance" class="text-xs text-gray-300">-- km</div>
+                </button>
+
+                <!-- Toll-Free Route Card -->
+                <button id="select-tollfree-route-btn" class="p-3 rounded-xl border-2 border-gray-700 bg-gray-700/30 flex flex-col items-start transition text-left relative overflow-hidden">
+                    <div class="flex items-center justify-between w-full">
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-400">Toll-Free</span>
+                        <span class="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[9px] font-semibold">Free</span>
+                    </div>
+                    <div id="tollfree-duration" class="text-lg font-extrabold text-white mt-1">-- min</div>
+                    <div id="tollfree-distance" class="text-xs text-gray-300">-- km</div>
+                    <div id="tollfree-diff" class="text-[10px] text-amber-400 font-medium mt-0.5">+0 min detour</div>
                 </button>
             </div>
 
@@ -182,7 +204,7 @@
             </button>
 
             <!-- Turn-by-Turn Instruction List -->
-            <div id="steps-list" class="max-h-48 overflow-y-auto space-y-2 hidden pr-1 custom-scrollbar">
+            <div id="steps-list" class="max-h-40 overflow-y-auto space-y-2 hidden pr-1 custom-scrollbar">
             </div>
 
             <!-- Main Action Buttons -->
@@ -212,8 +234,13 @@
         const state = {
             map: null,
             userCoords: [101.6869, 3.1390], // Default fallback: Kuala Lumpur
+            userCountryCode: 'MY', // Auto-detected country code
             destinationCoords: null,
-            routeData: null,
+            routes: {
+                fastest: null,
+                tollFree: null
+            },
+            selectedRouteType: 'fastest', // 'fastest' or 'tollFree'
             currentStepIndex: 0,
             isNavigating: false,
             isSimulating: false,
@@ -239,19 +266,40 @@
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             
-            // Prevent MapLibre from attempting cross-origin window access in constrained iframes
             try {
                 if (window.self !== window.top) {
                     Object.defineProperty(window, 'parent', { value: window, writable: false });
                 }
-            } catch (e) {
-                // Security context prevents property definition, fallback continues gracefully
-            }
+            } catch (e) {}
 
             initMap();
             setupEventListeners();
+            detectUserCountry();
             setupGeolocation();
         });
+
+        // Detect user country using free IP lookup API with graceful fallback
+        async function detectUserCountry() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                if (data && data.country_code) {
+                    state.userCountryCode = data.country_code.toUpperCase();
+                    document.getElementById('country-badge').textContent = state.userCountryCode;
+                }
+            } catch (e) {
+                try {
+                    const fallbackRes = await fetch('https://ip-api.com/json/');
+                    const fallbackData = await fallbackRes.json();
+                    if (fallbackData && fallbackData.countryCode) {
+                        state.userCountryCode = fallbackData.countryCode.toUpperCase();
+                        document.getElementById('country-badge').textContent = state.userCountryCode;
+                    }
+                } catch (err) {
+                    console.log('Country detection defaulted to MY');
+                }
+            }
+        }
 
         // Initialize MapLibre Engine safely
         function initMap() {
@@ -265,13 +313,11 @@
                 trackResize: true
             });
 
-            // Add standard zoom/pitch controls
             state.map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'bottom-right');
 
             state.map.on('load', () => {
                 createUserMarker();
                 
-                // Map click for selecting destination directly
                 state.map.on('click', (e) => {
                     if (state.isNavigating) return;
                     setDestination([e.lngLat.lng, e.lngLat.lat], "Selected Location");
@@ -292,7 +338,6 @@
         }
 
         function setupEventListeners() {
-            // Address Search Input Auto-complete
             const searchInput = document.getElementById('search-input');
             const searchResults = document.getElementById('search-results');
             const clearSearchBtn = document.getElementById('clear-search-btn');
@@ -324,9 +369,11 @@
             document.getElementById('voice-btn').addEventListener('click', toggleVoiceGuidance);
             document.getElementById('close-geo-toast-btn').addEventListener('click', hideGeoToast);
 
-            // Route Actions
+            // Route Actions & Route Switching
             document.getElementById('close-route-btn').addEventListener('click', clearRoute);
             document.getElementById('toggle-steps-btn').addEventListener('click', toggleStepsList);
+            document.getElementById('select-fastest-route-btn').addEventListener('click', () => switchSelectedRoute('fastest'));
+            document.getElementById('select-tollfree-route-btn').addEventListener('click', () => switchSelectedRoute('tollFree'));
             document.getElementById('start-nav-btn').addEventListener('click', () => startNavigation(false));
             document.getElementById('sim-btn').addEventListener('click', () => startNavigation(true));
             document.getElementById('stop-nav-btn').addEventListener('click', stopNavigation);
@@ -360,17 +407,14 @@
 
             showGeoToast("Locating your exact position...");
 
-            // Query live GPS coordinates with high accuracy
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     state.hasLocPermission = true;
                     hideGeoToast();
                     const coords = [pos.coords.longitude, pos.coords.latitude];
                     
-                    // Update internal state and marker position with actual GPS position
                     updateUserPosition(coords, pos.coords.heading, pos.coords.speed);
 
-                    // Smoothly fly camera directly to true GPS coordinates
                     state.map.flyTo({ 
                         center: coords, 
                         zoom: 17,
@@ -381,7 +425,7 @@
                 (err) => {
                     let errMsg = "Unable to access your location.";
                     if (err.code === err.PERMISSION_DENIED) {
-                        errMsg = "Location permission was denied. Please allow location access in browser settings.";
+                        errMsg = "Location permission denied. Please enable location access in browser settings.";
                     } else if (err.code === err.POSITION_UNAVAILABLE) {
                         errMsg = "Location unavailable. Please ensure device GPS is turned on.";
                     } else if (err.code === err.TIMEOUT) {
@@ -409,11 +453,9 @@
                 state.userMarker.setLngLat(coords);
             }
 
-            // Update Speed HUD
             const speedKmh = Math.max(0, Math.round((speedMs || 0) * 3.6));
             document.getElementById('speed-display').textContent = speedKmh;
 
-            // Camera follow logic during navigation
             if (state.isNavigating && state.followUser) {
                 state.map.easeTo({
                     center: coords,
@@ -429,20 +471,15 @@
 
         async function fetchGeocode(query) {
             try {
-                // Determine user proximity bounding box or center around Malaysia (KL area by default)
                 const currentLng = state.userCoords[0];
                 const currentLat = state.userCoords[1];
-                
-                // Viewbox focused around current position / Peninsular Malaysia (minLon, minLat, maxLon, maxLat)
                 const viewbox = `${currentLng - 1.5},${currentLat - 1.5},${currentLng + 1.5},${currentLat + 1.5}`;
 
-                // Priority 1: Search within Malaysia with proximity bias
-                const primaryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=my&viewbox=${viewbox}&bounded=0&limit=7&addressdetails=1`;
+                const primaryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${state.userCountryCode.toLowerCase()}&viewbox=${viewbox}&bounded=0&limit=7&addressdetails=1`;
                 
                 let response = await fetch(primaryUrl);
                 let data = await response.json();
 
-                // Priority 2: Fall back to global search if no local results matched
                 if (!data || data.length === 0) {
                     const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
                     response = await fetch(fallbackUrl);
@@ -468,9 +505,8 @@
                 const item = document.createElement('div');
                 item.className = 'p-3 hover:bg-gray-700/80 cursor-pointer text-xs border-b border-gray-700/50 last:border-0 flex items-center gap-2.5';
                 
-                // Format clean label name
                 const primaryName = res.display_name.split(',')[0];
-                const countryCode = res.address && res.address.country_code ? res.address.country_code.toUpperCase() : 'MY';
+                const countryCode = res.address && res.address.country_code ? res.address.country_code.toUpperCase() : state.userCountryCode;
 
                 item.innerHTML = `
                     <i data-lucide="map-pin" class="w-4 h-4 text-blue-400 shrink-0"></i>
@@ -504,73 +540,140 @@
             lucide.createIcons();
 
             document.getElementById('route-dest-title').textContent = name;
-            await calculateRoute();
+            await calculateRoutes();
         }
 
-        async function calculateRoute() {
+        async function calculateRoutes() {
             if (!state.userCoords || !state.destinationCoords) return;
 
-            const url = `https://router.project-osrm.org/route/v1/driving/${state.userCoords[0]},${state.userCoords[1]};${state.destinationCoords[0]},${state.destinationCoords[1]}?overview=full&geometries=geojson&steps=true`;
+            const baseParams = `${state.userCoords[0]},${state.userCoords[1]};${state.destinationCoords[0]},${state.destinationCoords[1]}?overview=full&geometries=geojson&steps=true`;
+            
+            const fastestUrl = `https://router.project-osrm.org/route/v1/driving/${baseParams}`;
+            const tollFreeUrl = `https://router.project-osrm.org/route/v1/driving/${baseParams}&exclude=toll`;
 
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                const [fastestRes, tollFreeRes] = await Promise.all([
+                    fetch(fastestUrl).then(r => r.json()),
+                    fetch(tollFreeUrl).then(r => r.json()).catch(() => null)
+                ]);
 
-                if (!data.routes || data.routes.length === 0) return;
+                if (!fastestRes.routes || fastestRes.routes.length === 0) return;
 
-                state.routeData = data.routes[0];
-                renderRouteLine(state.routeData.geometry);
-                updateRouteUI(state.routeData);
+                state.routes.fastest = fastestRes.routes[0];
+                state.routes.tollFree = (tollFreeRes && tollFreeRes.routes && tollFreeRes.routes.length > 0) 
+                    ? tollFreeRes.routes[0] 
+                    : fastestRes.routes[0];
+
+                state.selectedRouteType = 'fastest';
+                renderRouteLines();
+                updateRouteUI();
             } catch (err) {
                 console.error("Routing request failed:", err);
             }
         }
 
-        function renderRouteLine(geometry) {
-            if (state.map.getSource('route')) {
-                state.map.getSource('route').setData({
-                    type: 'Feature',
-                    geometry: geometry
-                });
-            } else {
-                state.map.addSource('route', {
-                    type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        geometry: geometry
-                    }
-                });
+        function renderRouteLines() {
+            const activeRoute = state.routes[state.selectedRouteType];
+            const inactiveRoute = state.selectedRouteType === 'fastest' ? state.routes.tollFree : state.routes.fastest;
 
+            if (state.map.getSource('route-active')) {
+                state.map.getSource('route-active').setData({ type: 'Feature', geometry: activeRoute.geometry });
+            } else {
+                state.map.addSource('route-active', { type: 'geojson', data: { type: 'Feature', geometry: activeRoute.geometry } });
                 state.map.addLayer({
-                    id: 'route-line',
+                    id: 'route-line-active',
                     type: 'line',
-                    source: 'route',
+                    source: 'route-active',
                     layout: { 'line-join': 'round', 'line-cap': 'round' },
-                    paint: {
-                        'line-color': '#3B82F6',
-                        'line-width': 6,
-                        'line-opacity': 0.85
-                    }
+                    paint: { 'line-color': '#3B82F6', 'line-width': 7, 'line-opacity': 0.9 }
                 });
             }
 
-            const coordinates = geometry.coordinates;
+            if (inactiveRoute && inactiveRoute !== activeRoute) {
+                if (state.map.getSource('route-alt')) {
+                    state.map.getSource('route-alt').setData({ type: 'Feature', geometry: inactiveRoute.geometry });
+                } else {
+                    state.map.addSource('route-alt', { type: 'geojson', data: { type: 'Feature', geometry: inactiveRoute.geometry } });
+                    state.map.addLayer({
+                        id: 'route-line-alt',
+                        type: 'line',
+                        source: 'route-alt',
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: { 'line-color': '#9CA3AF', 'line-width': 5, 'line-opacity': 0.5 }
+                    }, 'route-line-active');
+                }
+            }
+
+            const coordinates = activeRoute.geometry.coordinates;
             const bounds = coordinates.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-            state.map.fitBounds(bounds, { padding: 80 });
+            state.map.fitBounds(bounds, { padding: 90 });
         }
 
-        function updateRouteUI(route) {
-            const durationMin = Math.round(route.duration / 60);
-            const distanceKm = (route.distance / 1000).toFixed(1);
+        function switchSelectedRoute(routeType) {
+            state.selectedRouteType = routeType;
+            
+            const fastestBtn = document.getElementById('select-fastest-route-btn');
+            const tollFreeBtn = document.getElementById('select-tollfree-route-btn');
 
-            document.getElementById('route-duration').textContent = `${durationMin} min`;
-            document.getElementById('route-distance').textContent = `${distanceKm} km`;
+            if (routeType === 'fastest') {
+                fastestBtn.className = 'p-3 rounded-xl border-2 border-blue-500 bg-blue-500/10 flex flex-col items-start transition text-left relative overflow-hidden';
+                tollFreeBtn.className = 'p-3 rounded-xl border-2 border-gray-700 bg-gray-700/30 flex flex-col items-start transition text-left relative overflow-hidden';
+            } else {
+                fastestBtn.className = 'p-3 rounded-xl border-2 border-gray-700 bg-gray-700/30 flex flex-col items-start transition text-left relative overflow-hidden';
+                tollFreeBtn.className = 'p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 flex flex-col items-start transition text-left relative overflow-hidden';
+            }
 
+            renderRouteLines();
+            updateStepsListUI(state.routes[routeType]);
+        }
+
+        function updateRouteUI() {
+            const fastest = state.routes.fastest;
+            const tollFree = state.routes.tollFree;
+
+            const fastestMin = Math.round(fastest.duration / 60);
+            const fastestKm = (fastest.distance / 1000).toFixed(1);
+
+            const tollFreeMin = Math.round(tollFree.duration / 60);
+            const tollFreeKm = (tollFree.distance / 1000).toFixed(1);
+
+            document.getElementById('fastest-duration').textContent = `${fastestMin} min`;
+            document.getElementById('fastest-distance').textContent = `${fastestKm} km`;
+
+            document.getElementById('tollfree-duration').textContent = `${tollFreeMin} min`;
+            document.getElementById('tollfree-distance').textContent = `${tollFreeKm} km`;
+
+            const diffMin = tollFreeMin - fastestMin;
+            const diffEl = document.getElementById('tollfree-diff');
+            
+            if (diffMin > 0) {
+                diffEl.textContent = `+${diffMin} min longer`;
+                diffEl.className = "text-[10px] text-amber-400 font-medium mt-0.5";
+            } else {
+                diffEl.textContent = "Same duration";
+                diffEl.className = "text-[10px] text-emerald-400 font-medium mt-0.5";
+            }
+
+            const hasTolls = fastest.legs[0].steps.some(step => step.intersections && step.intersections.some(i => i.classes && i.classes.includes('toll')));
+            const tollBadge = document.getElementById('fastest-toll-badge');
+            if (!hasTolls) {
+                tollBadge.textContent = "No Tolls";
+                tollBadge.className = "px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[9px] font-semibold";
+            } else {
+                tollBadge.textContent = "Toll Road";
+                tollBadge.className = "px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[9px] font-semibold";
+            }
+
+            updateStepsListUI(state.routes[state.selectedRouteType]);
+            document.getElementById('bottom-card').classList.remove('hidden');
+        }
+
+        function updateStepsListUI(route) {
             const stepsList = document.getElementById('steps-list');
             stepsList.innerHTML = '';
 
             const steps = route.legs[0].steps;
-            steps.forEach((step, idx) => {
+            steps.forEach((step) => {
                 const stepEl = document.createElement('div');
                 stepEl.className = 'flex items-center gap-3 p-2 bg-gray-700/30 rounded-xl text-xs';
                 stepEl.innerHTML = `
@@ -586,7 +689,6 @@
             });
 
             lucide.createIcons();
-            document.getElementById('bottom-card').classList.remove('hidden');
         }
 
         function getManeuverIcon(type, modifier) {
@@ -598,7 +700,8 @@
         }
 
         function startNavigation(simulate = false) {
-            if (!state.routeData) return;
+            const activeRoute = state.routes[state.selectedRouteType];
+            if (!activeRoute) return;
 
             state.isNavigating = true;
             state.isSimulating = simulate;
@@ -613,7 +716,7 @@
             speakInstruction("Navigation started. Drive safely.");
 
             if (simulate) {
-                runSimulation();
+                runSimulation(activeRoute);
             }
         }
 
@@ -632,9 +735,10 @@
         }
 
         function checkNavigationProgress(coords) {
-            if (!state.routeData || !state.isNavigating) return;
+            const activeRoute = state.routes[state.selectedRouteType];
+            if (!activeRoute || !state.isNavigating) return;
 
-            const steps = state.routeData.legs[0].steps;
+            const steps = activeRoute.legs[0].steps;
             const currentStep = steps[state.currentStepIndex];
 
             if (!currentStep) return;
@@ -655,8 +759,8 @@
             }
         }
 
-        function runSimulation() {
-            const coordinates = state.routeData.geometry.coordinates;
+        function runSimulation(route) {
+            const coordinates = route.geometry.coordinates;
             state.simStepIndex = 0;
 
             state.simulationInterval = setInterval(() => {
@@ -714,11 +818,6 @@
             return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
         }
 
-        function centerOnUser() {
-            state.followUser = true;
-            state.map.flyTo({ center: state.userCoords, zoom: 16 });
-        }
-
         function toggleMapOrientation() {
             const currentBearing = state.map.getBearing();
             state.map.easeTo({ bearing: currentBearing === 0 ? 180 : 0 });
@@ -748,14 +847,18 @@
         }
 
         function clearRoute() {
-            if (state.map.getLayer('route-line')) state.map.removeLayer('route-line');
-            if (state.map.getSource('route')) state.map.removeSource('route');
+            if (state.map.getLayer('route-line-active')) state.map.removeLayer('route-line-active');
+            if (state.map.getLayer('route-line-alt')) state.map.removeLayer('route-line-alt');
+            if (state.map.getSource('route-active')) state.map.removeSource('route-active');
+            if (state.map.getSource('route-alt')) state.map.removeSource('route-alt');
             if (state.destMarker) state.destMarker.remove();
 
-            state.routeData = null;
+            state.routes = { fastest: null, tollFree: null };
             state.destinationCoords = null;
             document.getElementById('bottom-card').classList.add('hidden');
         }
     </script>
 </body>
 </html>
+EOF
+
