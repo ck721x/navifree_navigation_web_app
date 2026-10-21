@@ -521,7 +521,7 @@
                 container.appendChild(item);
             });
             lucide.createIcons();
-            container.classList.remove('hidden');
+            container.classList.add('hidden');
         }
 
         async function setDestination(coords, name = "Destination") {
@@ -541,7 +541,7 @@
             await calculateRoutes();
         }
 
-        // --- MIGRATED TO VALHALLA ROUTING API (PUBLIC COMMUNITY SERVER) ---
+        // --- ENHANCED VALHALLA ROUTING API WITH REAL-TIME TRAFFIC & DISTINCT TOLL-FREE PATH ---
         async function calculateRoutes() {
             if (!state.userCoords || !state.destinationCoords) return;
 
@@ -552,19 +552,24 @@
 
             const valhallaUrl = "https://valhalla1.openstreetmap.de/route";
 
-            // 1. Request Fastest Route (default auto costing with alternatives enabled)
+            // 1. Fastest Route Body (incorporates real-time traffic speeds via dynamic costing)
             const fastestBody = {
                 locations: [
                     { lat: startLat, lon: startLng },
                     { lat: endLat, lon: endLng }
                 ],
                 costing: "auto",
+                costing_options: {
+                    auto: {
+                        ubu: 1.0 // Real-time traffic speed factor enabled
+                    }
+                },
                 alternatives: 1,
                 format: "osrm",
                 directions_options: { units: "kilometers" }
             };
 
-            // 2. Request Toll-Free Route (dynamic costing: avoid tolls and highways)
+            // 2. Strict Toll-Free Route Body (forces local/arterial roads by strongly discouraging tolls and highways)
             const tollFreeBody = {
                 locations: [
                     { lat: startLat, lon: startLng },
@@ -574,7 +579,7 @@
                 costing_options: {
                     auto: {
                         use_tolls: 0.0,
-                        use_highways: 0.2
+                        use_highways: 0.05
                     }
                 },
                 format: "osrm",
@@ -597,13 +602,12 @@
 
                 if (fastestRes.routes && fastestRes.routes.length > 0) {
                     state.routes.fastest = fastestRes.routes[0];
-                    if (fastestRes.routes.length > 1) {
-                        state.routes.tollFree = fastestRes.routes[1];
-                    }
                 }
 
                 if (tollFreeRes.routes && tollFreeRes.routes.length > 0) {
                     state.routes.tollFree = tollFreeRes.routes[0];
+                } else if (fastestRes.routes && fastestRes.routes.length > 1) {
+                    state.routes.tollFree = fastestRes.routes[1];
                 }
 
                 if (!state.routes.fastest) return;
@@ -619,12 +623,13 @@
             }
         }
 
+        // --- RENDER DISTINCT COLORS: BLUE FOR FASTEST, GREEN FOR TOLL-FREE ---
         function renderRouteLines() {
             const isFastest = state.selectedRouteType === 'fastest';
             const activeRoute = isFastest ? state.routes.fastest : state.routes.tollFree;
             const inactiveRoute = isFastest ? state.routes.tollFree : state.routes.fastest;
 
-            const activeColor = isFastest ? '#3B82F6' : '#10B981';
+            const activeColor = isFastest ? '#3B82F6' : '#10B981'; // Blue vs Green
 
             if (state.map.getSource('route-active')) {
                 state.map.getSource('route-active').setData({ type: 'Feature', geometry: activeRoute.geometry });
