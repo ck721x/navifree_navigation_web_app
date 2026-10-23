@@ -88,14 +88,49 @@
             </button>
         </div>
 
+        <!-- Quick POI Shortcut Chips for Local Search Efficiency -->
+        <div id="quick-search-chips" class="flex items-center gap-1.5 overflow-x-auto py-1 text-[11px] no-scrollbar">
+            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
+                ⛽ Petrol Station
+            </button>
+            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
+                🅿️ Parking
+            </button>
+            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
+                ☕ Coffee
+            </button>
+            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
+                🍔 Food
+            </button>
+        </div>
+
         <!-- Search Auto-complete Suggestions Dropdown -->
         <div id="suggestions-dropdown" class="hidden bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
             <div id="suggestions-list" class="divide-y divide-slate-800/60"></div>
         </div>
     </div>
 
+    <!-- TOP NAVIGATION TURN HUD -->
+    <div id="navigation-hud" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[1001] w-[92%] max-w-lg bg-slate-900/95 backdrop-blur-md border border-blue-500/40 rounded-2xl shadow-2xl p-4 flex items-center justify-between transition-all">
+        <div class="flex items-center gap-4">
+            <div id="hud-turn-bg" class="w-12 h-12 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400">
+                <i data-lucide="navigation" id="hud-turn-icon" class="w-7 h-7"></i>
+            </div>
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1">
+                    <span id="hud-distance">0 m</span>
+                </div>
+                <div id="hud-instruction" class="text-base font-bold text-white leading-tight">Head towards destination</div>
+            </div>
+        </div>
+        <div class="text-right pl-2 border-l border-slate-800">
+            <div id="hud-speed" class="text-xl font-extrabold text-emerald-400">0</div>
+            <div class="text-[10px] text-slate-400 uppercase font-bold">km/h</div>
+        </div>
+    </div>
+
     <!-- RIGHT SIDE MAP CONTROLS -->
-    <div class="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+    <div id="map-controls" class="absolute bottom-96 right-4 z-[1000] flex flex-col gap-2 transition-all duration-300">
         <!-- Recenter / GPS -->
         <button id="btn-recenter" title="Center on My Location" class="p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
             <i data-lucide="locate-fixed" class="w-5 h-5 text-blue-400"></i>
@@ -135,25 +170,6 @@
         </div>
     </div>
 
-    <!-- TOP NAVIGATION TURN HUD (Active Navigation Mode) -->
-    <div id="navigation-hud" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[1001] w-[92%] max-w-lg bg-slate-900/95 backdrop-blur-md border border-blue-500/40 rounded-2xl shadow-2xl p-4 flex items-center justify-between transition-all">
-        <div class="flex items-center gap-4">
-            <div id="hud-turn-bg" class="w-12 h-12 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400">
-                <i data-lucide="navigation" id="hud-turn-icon" class="w-7 h-7"></i>
-            </div>
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                    <span id="hud-distance">0 m</span>
-                </div>
-                <div id="hud-instruction" class="text-base font-bold text-white leading-tight">Head towards destination</div>
-            </div>
-        </div>
-        <div class="text-right pl-2 border-l border-slate-800">
-            <div id="hud-speed" class="text-xl font-extrabold text-emerald-400">0</div>
-            <div class="text-[10px] text-slate-400 uppercase font-bold">km/h</div>
-        </div>
-    </div>
-
     <!-- BOTTOM ROUTE & NAVIGATION CARD -->
     <div id="route-card" class="hidden absolute bottom-6 left-4 right-4 md:left-6 md:w-96 z-[1000] bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl p-4 flex flex-col gap-3 transition-all max-h-[85vh]">
         <!-- Destination Header -->
@@ -167,62 +183,71 @@
                     <p id="dest-address" class="text-xs text-slate-400 truncate max-w-[200px]">Location selected</p>
                 </div>
             </div>
-            <button id="btn-close-route" class="text-slate-400 hover:text-white p-1 rounded-lg">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+            <div class="flex items-center gap-1">
+                <!-- Collapse / Expand toggle button -->
+                <button id="btn-collapse-card" class="text-slate-400 hover:text-white p-1 rounded-lg transition" title="Collapse / Expand Card">
+                    <i data-lucide="chevron-down" id="card-collapse-icon" class="w-5 h-5 transition-transform"></i>
+                </button>
+                <button id="btn-close-route" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
         </div>
 
-        <!-- Route Mode Toggle: FASTEST vs TOLL-FREE -->
-        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800">
-            <button id="btn-route-fastest" class="route-type-btn py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-blue-600 text-white shadow-lg">
-                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-                <span>Fastest</span>
-            </button>
-            <button id="btn-route-tollfree" class="route-type-btn py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200">
-                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
-                <span>Toll-Free</span>
-            </button>
-        </div>
+        <!-- Collapsible Content Wrapper -->
+        <div id="route-card-body" class="flex flex-col gap-3 transition-all">
+            <!-- Route Mode Toggle: FASTEST vs TOLL-FREE -->
+            <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800">
+                <button id="btn-route-fastest" class="route-type-btn py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-blue-600 text-white shadow-lg">
+                    <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                    <span>Fastest</span>
+                </button>
+                <button id="btn-route-tollfree" class="route-type-btn py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    <span>Toll-Free</span>
+                </button>
+            </div>
 
-        <!-- Route Summary Details -->
-        <div class="bg-slate-950/40 rounded-xl p-3 border border-slate-800/80 flex items-center justify-between">
-            <div>
-                <div class="flex items-baseline gap-2">
-                    <span id="route-duration" class="text-2xl font-extrabold text-blue-400">-- min</span>
-                    <span id="route-distance" class="text-sm text-slate-400 font-medium">-- km</span>
+            <!-- Route Summary Details -->
+            <div class="bg-slate-950/40 rounded-xl p-3 border border-slate-800/80 flex items-center justify-between">
+                <div>
+                    <div class="flex items-baseline gap-2">
+                        <span id="route-duration" class="text-2xl font-extrabold text-blue-400">-- min</span>
+                        <span id="route-distance" class="text-sm text-slate-400 font-medium">-- km</span>
+                    </div>
+                    <div id="route-tag" class="text-xs text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> AI Optimized Corridor
+                    </div>
                 </div>
-                <div id="route-tag" class="text-xs text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
-                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> AI Optimized Corridor
+                <div id="route-detour-badge" class="hidden text-xs px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg">
+                    +0 min detour
                 </div>
             </div>
-            <div id="route-detour-badge" class="hidden text-xs px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg">
-                +0 min detour
-            </div>
-        </div>
 
-        <!-- Collapsible Turn-by-Turn Steps -->
-        <div class="border-t border-slate-800 pt-2">
-            <button id="btn-toggle-steps" class="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 py-1">
-                <span class="font-semibold flex items-center gap-1">
-                    <i data-lucide="list-ordered" class="w-4 h-4 text-blue-400"></i> Turn-by-Turn Steps
-                </span>
-                <i data-lucide="chevron-down" id="steps-chevron" class="w-4 h-4 transition-transform"></i>
-            </button>
-            <div id="turn-steps-container" class="hidden max-h-48 overflow-y-auto space-y-2 mt-2 pr-1 divide-y divide-slate-800/50">
-                <!-- Steps populated via JS -->
+            <!-- Collapsible Turn-by-Turn Steps -->
+            <div class="border-t border-slate-800 pt-2">
+                <button id="btn-toggle-steps" class="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 py-1">
+                    <span class="font-semibold flex items-center gap-1">
+                        <i data-lucide="list-ordered" class="w-4 h-4 text-blue-400"></i> Turn-by-Turn Steps
+                    </span>
+                    <i data-lucide="chevron-down" id="steps-chevron" class="w-4 h-4 transition-transform"></i>
+                </button>
+                <div id="turn-steps-container" class="hidden max-h-48 overflow-y-auto space-y-2 mt-2 pr-1 divide-y divide-slate-800/50">
+                    <!-- Steps populated via JS -->
+                </div>
             </div>
-        </div>
 
-        <!-- Action Buttons -->
-        <div class="grid grid-cols-2 gap-2 pt-1">
-            <button id="btn-simulate-nav" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700">
-                <i data-lucide="play" class="w-4 h-4 text-emerald-400"></i>
-                <span>Simulate</span>
-            </button>
-            <button id="btn-start-nav" class="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30">
-                <i data-lucide="navigation" class="w-4 h-4"></i>
-                <span>Start Nav</span>
-            </button>
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button id="btn-simulate-nav" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700">
+                    <i data-lucide="play" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Simulate</span>
+                </button>
+                <button id="btn-start-nav" class="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30">
+                    <i data-lucide="navigation" class="w-4 h-4"></i>
+                    <span>Start Nav</span>
+                </button>
+            </div>
         </div>
 
         <!-- Stop Navigation Button (Hidden during idle) -->
@@ -312,6 +337,7 @@
         let lastSpeedAlertTime = 0;
         let speedLimitDebounce = 0;
         let userCountryCode = 'MY';
+        let isRouteCardCollapsed = false;
 
         // CARTO vector styles
         const MAP_STYLES = {
@@ -426,6 +452,10 @@
                     userLocation = [lat, lng];
                     userMarker.setLngLat(toLngLat(userLocation));
 
+                    if (isNavigating) {
+                        map.easeTo({ center: toLngLat(userLocation), zoom: 17, duration: 600 });
+                    }
+
                     let speedKmh = 0;
                     if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
                         speedKmh = Math.round(pos.coords.speed * 3.6);
@@ -507,7 +537,7 @@
             );
         }
 
-        // Optimized Search & Geocoding with Local Country Prioritization & Caching
+        // Optimized Search & Geocoding with Local Viewbox Biasing, Caching, and POI Chips
         const searchInput = document.getElementById('search-input');
         const clearSearchBtn = document.getElementById('clear-search');
         const suggestionsDropdown = document.getElementById('suggestions-dropdown');
@@ -515,6 +545,16 @@
 
         let searchDebounce = null;
         const searchCache = new Map();
+
+        // Quick POI Shortcut Chip Click Handler
+        document.querySelectorAll('.search-poi-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const query = chip.textContent.replace(/[\u1F300-\u1F9FF]/g, '').trim();
+                searchInput.value = query;
+                clearSearchBtn.classList.remove('hidden');
+                fetchOptimizedGeocode(query);
+            });
+        });
 
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
@@ -527,7 +567,7 @@
             }
 
             clearTimeout(searchDebounce);
-            searchDebounce = setTimeout(() => fetchOptimizedGeocode(query), 300);
+            searchDebounce = setTimeout(() => fetchOptimizedGeocode(query), 250);
         });
 
         clearSearchBtn.addEventListener('click', () => {
@@ -537,19 +577,41 @@
         });
 
         async function fetchOptimizedGeocode(query) {
-            const cacheKey = `${userCountryCode}_${query.toLowerCase()}`;
+            const cacheKey = `${userCountryCode}_${userLocation[0].toFixed(2)}_${userLocation[1].toFixed(2)}_${query.toLowerCase()}`;
             if (searchCache.has(cacheKey)) {
                 renderSuggestions(searchCache.get(cacheKey));
                 return;
             }
 
             try {
-                const localUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${userCountryCode.toLowerCase()}&limit=5`;
+                // SOLUTION ENHANCEMENT: Viewbox bounding box (~0.5 deg around current user GPS)
+                const lat = userLocation[0];
+                const lon = userLocation[1];
+                const viewbox = `${lon - 0.5},${lat + 0.5},${lon + 0.5},${lat - 0.5}`;
+
+                const localUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${userCountryCode.toLowerCase()}&viewbox=${viewbox}&bounded=1&limit=5`;
+                const fallbackCountryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${userCountryCode.toLowerCase()}&limit=5`;
                 const globalUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
 
-                const resLocal = await fetch(localUrl);
-                let data = await resLocal.json();
+                let res = await fetch(localUrl);
+                let data = await res.json();
 
+                // Fallback to nationwide search if localized viewbox yields limited results
+                if (!data || data.length < 3) {
+                    const resCountry = await fetch(fallbackCountryUrl);
+                    const countryData = await resCountry.json();
+                    if (countryData && countryData.length > 0) {
+                        const existingIds = new Set((data || []).map(item => item.place_id));
+                        data = data || [];
+                        for (const item of countryData) {
+                            if (!existingIds.has(item.place_id)) {
+                                data.push(item);
+                            }
+                        }
+                    }
+                }
+
+                // Global fallback for international queries
                 if (!data || data.length < 3) {
                     const resGlobal = await fetch(globalUrl);
                     const globalData = await resGlobal.json();
@@ -843,6 +905,24 @@
             chevron.classList.toggle('rotate-180');
         });
 
+        // Bottom card collapse/expand functionality with map controls stickiness
+        document.getElementById('btn-collapse-card').addEventListener('click', () => {
+            isRouteCardCollapsed = !isRouteCardCollapsed;
+            const body = document.getElementById('route-card-body');
+            const collapseIcon = document.getElementById('card-collapse-icon');
+            const mapControls = document.getElementById('map-controls');
+            
+            if (isRouteCardCollapsed) {
+                body.classList.add('hidden');
+                collapseIcon.classList.add('rotate-180');
+                if (mapControls) mapControls.style.bottom = '110px';
+            } else {
+                body.classList.remove('hidden');
+                collapseIcon.classList.remove('rotate-180');
+                if (mapControls) mapControls.style.bottom = '390px';
+            }
+        });
+
         document.getElementById('btn-close-route').addEventListener('click', stopNavigation);
         document.getElementById('btn-start-nav').addEventListener('click', () => startNavigation(false));
         document.getElementById('btn-simulate-nav').addEventListener('click', () => startNavigation(true));
@@ -861,7 +941,7 @@
             document.getElementById('btn-exit-nav').classList.remove('hidden');
             document.getElementById('btn-exit-nav').classList.add('flex');
 
-            map.setZoom(17);
+            map.flyTo({ center: toLngLat(userLocation), zoom: 17, essential: true });
             if (voiceEnabled) speakInstruction("Navigation started. Follow highlighted route.");
 
             if (simulate) {
@@ -882,8 +962,9 @@
                 }
 
                 const currentCoord = coords[stepIdx];
-                userMarker.setLngLat(toLngLat(currentCoord));
-                map.panTo(toLngLat(currentCoord));
+                userLocation = [currentCoord[0], currentCoord[1]];
+                userMarker.setLngLat(toLngLat(userLocation));
+                map.easeTo({ center: toLngLat(userLocation), zoom: 17, duration: 500 });
 
                 updateSpeedTrackerWidget(Math.floor(Math.random() * 15 + 40));
 
@@ -913,6 +994,9 @@
             document.getElementById('btn-simulate-nav').classList.remove('hidden');
             document.getElementById('btn-exit-nav').classList.add('hidden');
             document.getElementById('btn-exit-nav').classList.remove('flex');
+            
+            const mapControls = document.getElementById('map-controls');
+            if (mapControls) mapControls.style.bottom = '110px';
 
             map.flyTo({ center: toLngLat(userLocation), zoom: 13 });
             if (destMarker) destMarker.remove();
@@ -944,12 +1028,20 @@
         document.getElementById('btn-voice').addEventListener('click', () => {
             voiceEnabled = !voiceEnabled;
             const icon = document.getElementById('voice-icon');
+            const btn = document.getElementById('btn-voice');
+            
             if (voiceEnabled) {
+                btn.className = 'p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center';
+                icon.setAttribute('data-lucide', 'volume-2');
                 icon.className = 'w-5 h-5 text-purple-400';
                 speakInstruction("Voice announcements enabled.");
             } else {
-                icon.className = 'w-5 h-5 text-slate-500';
+                btn.className = 'p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-red-500/60 rounded-xl text-red-200 shadow-xl transition active:scale-95 flex items-center justify-center';
+                icon.setAttribute('data-lucide', 'volume-x');
+                icon.className = 'w-5 h-5 text-red-400';
+                speakInstruction("Voice announcements disabled.");
             }
+            lucide.createIcons();
         });
 
         function speakInstruction(text) {
