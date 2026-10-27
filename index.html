@@ -47,11 +47,30 @@
             height: 100%;
         }
 
-        /* 3D Map Perspective Mode */
-        .map-3d-mode {
-            transform: perspective(800px) rotateX(45deg) scale(1.15);
-            transform-origin: center bottom;
-            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        /* Toast notification */
+        .toast {
+            animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s forwards;
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(20px); }
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 2px solid rgba(148, 163, 184, 0.3);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -60,131 +79,113 @@
     <!-- MAP CONTAINER -->
     <div id="map" class="w-full h-full absolute inset-0 z-0"></div>
 
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[2000] flex flex-col gap-2 pointer-events-none"></div>
+
     <!-- TOP BAR: Search & Geocoding + AI Copilot Button Beside Search -->
-    <div class="absolute top-4 left-4 right-4 md:left-6 md:right-auto md:w-[460px] z-[1000] space-y-2">
+    <div class="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 md:left-6 md:right-auto md:w-[460px] z-[1000] space-y-2">
         <div class="flex items-center gap-2">
             <!-- Search Bar Wrapper -->
             <div class="relative flex-1 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl p-2 flex items-center gap-2">
-                <div class="flex items-center justify-center pl-3 text-slate-400">
+                <div class="flex items-center justify-center pl-2 sm:pl-3 text-slate-400">
                     <i data-lucide="search" class="w-5 h-5 text-blue-400"></i>
                 </div>
                 <input 
                     type="text" 
                     id="search-input" 
                     placeholder="Search destination, street, or POI..." 
-                    class="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 focus:outline-none py-1"
+                    class="w-full bg-transparent text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:outline-none py-1"
                     autocomplete="off"
                 />
-                <span id="country-badge" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold uppercase tracking-wider border border-slate-700" title="Detected Country Code">MY</span>
+                <span id="country-badge" class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold uppercase tracking-wider border border-slate-700" title="Detected Country Code">MY</span>
                 <button id="clear-search" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition hidden">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
 
             <!-- AI COPILOT FLOATING TRIGGER BUTTON -->
-            <button id="btn-ai-trigger" class="px-3.5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl shadow-2xl flex items-center gap-2 transition transform hover:scale-105 active:scale-95 border border-blue-400/30 shrink-0">
+            <button id="btn-ai-trigger" class="px-3 sm:px-3.5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl shadow-2xl flex items-center gap-1.5 sm:gap-2 transition transform hover:scale-105 active:scale-95 border border-blue-400/30 shrink-0">
                 <i data-lucide="sparkles" class="w-4 h-4 animate-pulse"></i>
-                <span class="text-xs font-bold tracking-wide">AI Copilot</span>
+                <span class="text-xs font-bold tracking-wide hidden sm:inline">AI Copilot</span>
             </button>
         </div>
 
-        <!-- Quick POI Shortcut Chips -->
-        <div id="quick-search-chips" class="flex items-center gap-1.5 overflow-x-auto py-1 text-[11px] no-scrollbar">
-            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
-                ⛽ Petrol Station
-            </button>
-            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
-                🅿️ Parking
-            </button>
-            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
-                ☕ Coffee
-            </button>
-            <button class="search-poi-chip px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-300 rounded-full shrink-0 transition flex items-center gap-1">
-                🍔 Food
-            </button>
-        </div>
-
-        <!-- Google-Maps-Style Search Results & Autocomplete Suggestions Dropdown -->
-        <div id="suggestions-dropdown" class="hidden bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto">
+        <!-- Search Auto-complete Suggestions Dropdown -->
+        <div id="suggestions-dropdown" class="hidden bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
             <div id="suggestions-list" class="divide-y divide-slate-800/60"></div>
+            <div id="search-loading" class="hidden p-4 flex items-center justify-center gap-2 text-slate-400 text-xs">
+                <div class="spinner"></div>
+                <span>Searching...</span>
+            </div>
         </div>
     </div>
 
     <!-- TOP NAVIGATION TURN HUD -->
-    <div id="navigation-hud" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[1001] w-[92%] max-w-lg bg-slate-900/95 backdrop-blur-md border border-blue-500/40 rounded-2xl shadow-2xl p-4 flex items-center justify-between transition-all">
-        <div class="flex items-center gap-4">
-            <div id="hud-turn-bg" class="w-12 h-12 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400">
-                <i data-lucide="navigation" id="hud-turn-icon" class="w-7 h-7"></i>
+    <div id="navigation-hud" class="hidden absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 z-[1001] w-[92%] max-w-lg bg-slate-900/95 backdrop-blur-md border border-blue-500/40 rounded-2xl shadow-2xl p-3 sm:p-4 flex items-center justify-between transition-all">
+        <div class="flex items-center gap-3 sm:gap-4">
+            <div id="hud-turn-bg" class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400">
+                <i data-lucide="navigation" id="hud-turn-icon" class="w-6 h-6 sm:w-7 sm:h-7"></i>
             </div>
             <div>
-                <div class="text-xs font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1">
+                <div class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1">
                     <span id="hud-distance">0 m</span>
                 </div>
-                <div id="hud-instruction" class="text-base font-bold text-white leading-tight">Head towards destination</div>
+                <div id="hud-instruction" class="text-sm sm:text-base font-bold text-white leading-tight">Head towards destination</div>
             </div>
         </div>
         <div class="text-right pl-2 border-l border-slate-800">
-            <div id="hud-speed" class="text-xl font-extrabold text-emerald-400">0</div>
-            <div class="text-[10px] text-slate-400 uppercase font-bold">km/h</div>
+            <div id="hud-speed" class="text-lg sm:text-xl font-extrabold text-emerald-400">0</div>
+            <div class="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold">km/h</div>
         </div>
     </div>
 
     <!-- RIGHT SIDE MAP CONTROLS -->
-    <div id="map-controls" class="absolute bottom-96 right-4 z-[1000] flex flex-col gap-2 transition-all duration-300">
-        <!-- Recenter / GPS -->
-        <button id="btn-recenter" title="Center on My Location" class="p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
-            <i data-lucide="locate-fixed" class="w-5 h-5 text-blue-400"></i>
+    <div id="map-controls" class="absolute top-24 right-3 sm:top-28 sm:right-4 md:bottom-96 md:top-auto z-[1000] flex flex-col gap-1.5 sm:gap-2 transition-all duration-300">
+        <button id="btn-recenter" title="Center on My Location" class="p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
+            <i data-lucide="locate-fixed" class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400"></i>
         </button>
-        <!-- 3D Perspective Toggle -->
-        <button id="btn-3d-view" title="Toggle 3D View" class="p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
-            <i data-lucide="box" id="icon-3d" class="w-5 h-5 text-cyan-400"></i>
+        <button id="btn-3d-view" title="Toggle 3D View" class="p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
+            <i data-lucide="box" id="icon-3d" class="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400"></i>
         </button>
-        <!-- Map Style Toggle -->
-        <button id="btn-theme" title="Toggle Map Theme" class="p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
-            <i data-lucide="sun" id="theme-icon" class="w-5 h-5 text-amber-400"></i>
+        <button id="btn-theme" title="Toggle Map Theme" class="p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
+            <i data-lucide="sun" id="theme-icon" class="w-4 h-4 sm:w-5 sm:h-5 text-amber-400"></i>
         </button>
-        <!-- Voice Guidance Toggle -->
-        <button id="btn-voice" title="Toggle Voice Announcements" class="p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
-            <i data-lucide="volume-2" id="voice-icon" class="w-5 h-5 text-purple-400"></i>
+        <button id="btn-voice" title="Toggle Voice Announcements" class="p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center">
+            <i data-lucide="volume-2" id="voice-icon" class="w-4 h-4 sm:w-5 sm:h-5 text-purple-400"></i>
+        </button>
+        <!-- Compass (points to North) -->
+        <button id="btn-compass" title="Compass - Points to North" class="p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center relative overflow-hidden">
+            <i data-lucide="navigation-2" id="compass-icon" class="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 transition-transform duration-200" style="transform: rotate(0deg);"></i>
         </button>
     </div>
 
-    <!-- ALWAYS-ON BOTTOM-LEFT GPS SPEED TRACKING WIDGET -->
-    <div id="speed-tracker-widget" class="absolute bottom-6 left-4 z-[1000] bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3 transition-all">
-        <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-            <i data-lucide="gauge" class="w-5 h-5"></i>
+    <!-- GPS SPEED TRACKING WIDGET - Round display (moves above route card when navigating) -->
+    <div id="speed-tracker-widget" class="absolute bottom-4 left-3 sm:bottom-6 sm:left-4 z-[1000] bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-full shadow-2xl px-4 py-2.5 flex items-center gap-3 transition-all duration-300">
+        <div class="flex items-baseline gap-1">
+            <span id="live-speed-val" class="text-xl sm:text-2xl font-extrabold text-white leading-none">0</span>
+            <span class="text-[10px] sm:text-xs text-slate-400 font-bold uppercase">km/h</span>
         </div>
-        <div>
-            <div class="flex items-baseline gap-1">
-                <span id="live-speed-val" class="text-xl font-extrabold text-white">0</span>
-                <span class="text-[10px] text-slate-400 font-bold uppercase">km/h</span>
-            </div>
-            <div id="speed-status-text" class="text-[10px] text-emerald-400 font-medium tracking-wide">Live GPS Speed Tracking</div>
+        <div class="w-px h-7 bg-slate-700"></div>
+        <div id="speed-limit-badge" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-red-500 bg-white text-slate-950 font-black text-sm flex items-center justify-center shadow-md" title="Speed Limit">
+            90
         </div>
-        <!-- Government / Area Speed Limit Badge -->
-        <div class="pl-2 border-l border-slate-800 text-center">
-            <div id="speed-limit-badge" class="w-8 h-8 rounded-full border-2 border-red-500/80 bg-white text-slate-950 font-black text-xs flex items-center justify-center shadow-md" title="Government / Area Recommended Speed Limit">
-                90
-            </div>
-            <div class="text-[8px] text-slate-400 uppercase tracking-tighter mt-0.5">Limit</div>
-        </div>
+        <!-- Hidden status text kept for JS compatibility (not displayed) -->
+        <span id="speed-status-text" class="hidden">Live GPS Speed Tracking</span>
     </div>
 
     <!-- BOTTOM ROUTE & NAVIGATION CARD -->
-    <div id="route-card" class="hidden absolute bottom-6 left-4 right-4 md:left-6 md:w-96 z-[1000] bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl p-4 flex flex-col gap-3 transition-all max-h-[85vh]">
-        <!-- Destination Header -->
+    <div id="route-card" class="hidden absolute bottom-20 left-3 right-3 sm:bottom-6 sm:left-4 sm:right-4 md:left-6 md:w-96 z-[1000] bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl p-3 sm:p-4 flex flex-col gap-3 transition-all max-h-[75vh] sm:max-h-[85vh]">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800">
             <div class="flex items-center gap-2">
                 <div class="p-2 rounded-lg bg-red-500/20 text-red-400">
                     <i data-lucide="map-pin" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <h3 id="dest-title" class="text-sm font-bold text-slate-100 truncate max-w-[200px]">Destination</h3>
-                    <p id="dest-address" class="text-xs text-slate-400 truncate max-w-[200px]">Location selected</p>
+                    <h3 id="dest-title" class="text-sm font-bold text-slate-100 truncate max-w-[180px] sm:max-w-[200px]">Destination</h3>
+                    <p id="dest-address" class="text-xs text-slate-400 truncate max-w-[180px] sm:max-w-[200px]">Location selected</p>
                 </div>
             </div>
             <div class="flex items-center gap-1">
-                <!-- Collapse / Expand toggle button -->
                 <button id="btn-collapse-card" class="text-slate-400 hover:text-white p-1 rounded-lg transition" title="Collapse / Expand Card">
                     <i data-lucide="chevron-down" id="card-collapse-icon" class="w-5 h-5 transition-transform"></i>
                 </button>
@@ -194,9 +195,7 @@
             </div>
         </div>
 
-        <!-- Collapsible Content Wrapper -->
         <div id="route-card-body" class="flex flex-col gap-3 transition-all">
-            <!-- Route Mode Toggle: FASTEST vs TOLL-FREE -->
             <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800">
                 <button id="btn-route-fastest" class="route-type-btn py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-blue-600 text-white shadow-lg">
                     <i data-lucide="zap" class="w-3.5 h-3.5"></i>
@@ -208,12 +207,11 @@
                 </button>
             </div>
 
-            <!-- Route Summary Details -->
             <div class="bg-slate-950/40 rounded-xl p-3 border border-slate-800/80 flex items-center justify-between">
                 <div>
                     <div class="flex items-baseline gap-2">
-                        <span id="route-duration" class="text-2xl font-extrabold text-blue-400">-- min</span>
-                        <span id="route-distance" class="text-sm text-slate-400 font-medium">-- km</span>
+                        <span id="route-duration" class="text-xl sm:text-2xl font-extrabold text-blue-400">-- min</span>
+                        <span id="route-distance" class="text-xs sm:text-sm text-slate-400 font-medium">-- km</span>
                     </div>
                     <div id="route-tag" class="text-xs text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
                         <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> AI Optimized Corridor
@@ -224,7 +222,11 @@
                 </div>
             </div>
 
-            <!-- Collapsible Turn-by-Turn Steps -->
+            <div id="route-loading" class="hidden py-4 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                <div class="spinner"></div>
+                <span>Calculating best routes...</span>
+            </div>
+
             <div class="border-t border-slate-800 pt-2">
                 <button id="btn-toggle-steps" class="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 py-1">
                     <span class="font-semibold flex items-center gap-1">
@@ -232,12 +234,10 @@
                     </span>
                     <i data-lucide="chevron-down" id="steps-chevron" class="w-4 h-4 transition-transform"></i>
                 </button>
-                <div id="turn-steps-container" class="hidden max-h-48 overflow-y-auto space-y-2 mt-2 pr-1 divide-y divide-slate-800/50">
-                    <!-- Steps populated via JS -->
+                <div id="turn-steps-container" class="hidden max-h-40 sm:max-h-48 overflow-y-auto space-y-2 mt-2 pr-1 divide-y divide-slate-800/50">
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="grid grid-cols-2 gap-2 pt-1">
                 <button id="btn-simulate-nav" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700">
                     <i data-lucide="play" class="w-4 h-4 text-emerald-400"></i>
@@ -250,7 +250,6 @@
             </div>
         </div>
 
-        <!-- Stop Navigation Button (Hidden during idle) -->
         <button id="btn-exit-nav" class="hidden py-2.5 px-3 bg-red-600/80 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition items-center justify-center gap-1.5 shadow-lg">
             <i data-lucide="square" class="w-4 h-4"></i>
             <span>Exit Navigation</span>
@@ -258,8 +257,7 @@
     </div>
 
     <!-- AI COPILOT CHAT MODAL / DRAWER -->
-    <div id="ai-chat-modal" class="hidden absolute top-20 left-4 md:left-6 z-[1010] w-[92%] sm:w-96 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden h-[500px] max-h-[80vh] transition-all">
-        <!-- AI Modal Header -->
+    <div id="ai-chat-modal" class="hidden absolute top-20 left-3 right-3 sm:left-4 sm:right-auto z-[1010] w-auto sm:w-96 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden h-[450px] sm:h-[500px] max-h-[80vh] transition-all">
         <div class="p-4 bg-gradient-to-r from-indigo-900/60 to-slate-900 border-b border-slate-800 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
                 <div class="p-2 bg-indigo-600/30 text-indigo-400 border border-indigo-500/40 rounded-xl">
@@ -277,9 +275,7 @@
             </button>
         </div>
 
-        <!-- Chat Scroll Area -->
         <div id="ai-chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
-            <!-- Welcome message -->
             <div class="flex gap-2.5 items-start">
                 <div class="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
                     <i data-lucide="sparkles" class="w-4 h-4"></i>
@@ -290,7 +286,6 @@
             </div>
         </div>
 
-        <!-- Quick Prompt Chips -->
         <div class="px-3 py-2 bg-slate-950/60 border-t border-slate-800/80 flex items-center gap-1.5 overflow-x-auto text-[11px]">
             <button class="ai-chip whitespace-nowrap px-2.5 py-1 bg-slate-800/80 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-200 border border-slate-700/60 rounded-full transition">
                 ☕ Recommend Coffee Stops
@@ -303,7 +298,6 @@
             </button>
         </div>
 
-        <!-- Chat Input Form -->
         <form id="ai-chat-form" class="p-3 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
             <input 
                 type="text" 
@@ -319,7 +313,7 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        const DEFAULT_CENTER = [3.1390, 101.6869]; // [lat, lng]
+        const DEFAULT_CENTER = [3.1390, 101.6869];
         let userLocation = [...DEFAULT_CENTER];
         let currentDestination = null;
         let routeData = { fastest: null, tollFree: null };
@@ -338,9 +332,7 @@
         let speedLimitDebounce = 0;
         let userCountryCode = 'MY';
         let isRouteCardCollapsed = false;
-        let lastSearchResults = [];
 
-        // CARTO vector styles
         const MAP_STYLES = {
             dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
             light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
@@ -352,6 +344,8 @@
             style: MAP_STYLES.dark,
             center: toLngLat(DEFAULT_CENTER),
             zoom: 13,
+            pitch: 0,
+            bearing: 0,
             attributionControl: true
         });
 
@@ -371,10 +365,119 @@
 
         let destMarker = null;
 
-        // Initialize Lucide Icons
+        // Switch user marker between pulse-dot (idle) and navigation arrow
+        function setUserMarkerMode(navigating) {
+            if (navigating) {
+                userMarkerElement.innerHTML = `
+                    <div class="relative flex items-center justify-center" style="width:28px;height:28px;">
+                        <div class="w-7 h-7 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            } else {
+                userMarkerElement.innerHTML = `
+                    <div class="relative">
+                        <div class="gps-pulse-ring"></div>
+                        <div class="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-lg"></div>
+                    </div>
+                `;
+            }
+        }
+
+        // Move speed tracker above the route card when navigating / route visible
+        function updateSpeedTrackerPosition() {
+            const widget = document.getElementById('speed-tracker-widget');
+            const routeCard = document.getElementById('route-card');
+            if (!widget || !routeCard) return;
+
+            const isRouteVisible = !routeCard.classList.contains('hidden');
+            const isMobile = window.innerWidth < 768;
+
+            if (isRouteVisible || isNavigating || isSimulating) {
+                if (isMobile) {
+                    widget.style.bottom = 'auto';
+                    widget.style.top = 'auto';
+                    widget.classList.remove('bottom-4', 'sm:bottom-6', 'left-3', 'sm:left-4');
+                    widget.style.left = '12px';
+                    widget.style.right = '12px';
+                    widget.style.bottom = isRouteCardCollapsed ? '7.5rem' : 'calc(5.5rem + min(75vh, 420px))';
+                } else {
+                    widget.style.left = '1rem';
+                    widget.style.right = 'auto';
+                    widget.style.bottom = isRouteCardCollapsed ? '8rem' : '26rem';
+                    widget.style.top = 'auto';
+                }
+            } else {
+                widget.style.top = 'auto';
+                widget.style.right = 'auto';
+                widget.style.left = '';
+                widget.style.bottom = '';
+                widget.classList.add('bottom-4', 'sm:bottom-6', 'left-3', 'sm:left-4');
+            }
+        }
+
         lucide.createIcons();
 
-        // Detect user country via IP Address for local-first search bias
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const colors = {
+                info: 'bg-slate-800 border-slate-600 text-slate-200',
+                success: 'bg-emerald-900/90 border-emerald-600 text-emerald-100',
+                error: 'bg-red-900/90 border-red-600 text-red-100',
+                warning: 'bg-amber-900/90 border-amber-600 text-amber-100'
+            };
+            const toast = document.createElement('div');
+            toast.className = `toast px-4 py-2.5 rounded-xl border text-xs font-medium shadow-xl pointer-events-auto ${colors[type] || colors.info}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function loadPreferences() {
+            try {
+                const savedTheme = localStorage.getItem('navifree_theme');
+                const savedVoice = localStorage.getItem('navifree_voice');
+                if (savedTheme === 'light' || savedTheme === 'dark') {
+                    currentMapStyle = savedTheme;
+                }
+                if (savedVoice === 'false') {
+                    voiceEnabled = false;
+                } else if (savedVoice === 'true') {
+                    voiceEnabled = true;
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        function savePreferences() {
+            try {
+                localStorage.setItem('navifree_theme', currentMapStyle);
+                localStorage.setItem('navifree_voice', String(voiceEnabled));
+            } catch (e) { /* ignore */ }
+        }
+
+        loadPreferences();
+
+        if (currentMapStyle === 'light') {
+            map.setStyle(MAP_STYLES.light);
+            const themeIcon = document.getElementById('theme-icon');
+            if (themeIcon) themeIcon.className = 'w-4 h-4 sm:w-5 sm:h-5 text-indigo-400';
+        }
+
+        if (!voiceEnabled) {
+            const icon = document.getElementById('voice-icon');
+            const btn = document.getElementById('btn-voice');
+            if (icon && btn) {
+                btn.className = 'p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-red-500/60 rounded-xl text-red-200 shadow-xl transition active:scale-95 flex items-center justify-center';
+                icon.setAttribute('data-lucide', 'volume-x');
+                icon.className = 'w-4 h-4 sm:w-5 sm:h-5 text-red-400';
+                lucide.createIcons();
+            }
+        }
+
         async function detectUserCountryByIP() {
             try {
                 const res = await fetch('https://ipapi.co/json/');
@@ -394,7 +497,6 @@
         }
         detectUserCountryByIP();
 
-        // Distance helper for speed calculation
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -407,7 +509,6 @@
             return R * c;
         }
 
-        // Trace government/authority speed limit from OpenStreetMap Overpass API
         async function fetchGovernmentSpeedLimit(lat, lng) {
             const now = Date.now();
             if (now - speedLimitDebounce < 15000) return;
@@ -442,7 +543,6 @@
             if (badge) badge.textContent = limit;
         }
 
-        // Always-On GPS Speed Tracking & Monitoring
         function initAlwaysOnSpeedTracking() {
             if (!navigator.geolocation) return;
 
@@ -482,18 +582,18 @@
         function updateSpeedTrackerWidget(speedKmh) {
             const liveSpeedEl = document.getElementById('live-speed-val');
             const hudSpeedEl = document.getElementById('hud-speed');
-            const speedStatusEl = document.getElementById('speed-status-text');
             const widgetEl = document.getElementById('speed-tracker-widget');
 
             if (liveSpeedEl) liveSpeedEl.textContent = speedKmh;
             if (hudSpeedEl) hudSpeedEl.textContent = speedKmh;
 
             if (speedKmh > currentSpeedLimitKmh) {
-                if (speedStatusEl) {
-                    speedStatusEl.textContent = `Speeding! Exceeds ${currentSpeedLimitKmh} km/h`;
-                    speedStatusEl.className = 'text-[10px] text-red-400 font-bold animate-pulse tracking-wide';
+                // Visual speeding alert on the round widget
+                if (widgetEl) {
+                    widgetEl.classList.add('border-red-500', 'bg-red-950/50');
+                    widgetEl.classList.remove('border-slate-700/60');
                 }
-                if (widgetEl) widgetEl.classList.add('border-red-500/80', 'bg-red-950/40');
+                if (liveSpeedEl) liveSpeedEl.classList.add('text-red-400');
 
                 const now = Date.now();
                 if (voiceEnabled && (now - lastSpeedAlertTime > 12000)) {
@@ -501,28 +601,29 @@
                     lastSpeedAlertTime = now;
                 }
             } else {
-                if (speedStatusEl) {
-                    speedStatusEl.textContent = 'Live GPS Speed Tracking';
-                    speedStatusEl.className = 'text-[10px] text-emerald-400 font-medium tracking-wide';
+                if (widgetEl) {
+                    widgetEl.classList.remove('border-red-500', 'bg-red-950/50');
+                    widgetEl.classList.add('border-slate-700/60');
                 }
-                if (widgetEl) widgetEl.classList.remove('border-red-500/80', 'bg-red-950/40');
+                if (liveSpeedEl) liveSpeedEl.classList.remove('text-red-400');
             }
         }
 
         initAlwaysOnSpeedTracking();
 
-        // 3D View Toggle Logic
+        // Real 3D View (MapLibre pitch + bearing)
         document.getElementById('btn-3d-view').addEventListener('click', () => {
             is3DView = !is3DView;
-            const mapContainer = document.getElementById('map');
             const icon3d = document.getElementById('icon-3d');
 
             if (is3DView) {
-                mapContainer.classList.add('map-3d-mode');
-                icon3d.className = 'w-5 h-5 text-emerald-400';
+                map.easeTo({ pitch: 60, bearing: 25, duration: 800 });
+                icon3d.className = 'w-4 h-4 sm:w-5 sm:h-5 text-emerald-400';
+                showToast('3D view enabled', 'success');
             } else {
-                mapContainer.classList.remove('map-3d-mode');
-                icon3d.className = 'w-5 h-5 text-cyan-400';
+                map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+                icon3d.className = 'w-4 h-4 sm:w-5 sm:h-5 text-cyan-400';
+                showToast('2D view restored', 'info');
             }
         });
 
@@ -538,24 +639,14 @@
             );
         }
 
-        // GOOGLE-MAPS-STYLE ENHANCED FUZZY AUTOCOMPLETE LOGIC
         const searchInput = document.getElementById('search-input');
         const clearSearchBtn = document.getElementById('clear-search');
         const suggestionsDropdown = document.getElementById('suggestions-dropdown');
         const suggestionsList = document.getElementById('suggestions-list');
+        const searchLoading = document.getElementById('search-loading');
 
         let searchDebounce = null;
         const searchCache = new Map();
-
-        // Quick POI Shortcut Chip Click Handler
-        document.querySelectorAll('.search-poi-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                const query = chip.textContent.replace(/[\u1F300-\u1F9FF]/g, '').trim();
-                searchInput.value = query;
-                clearSearchBtn.classList.remove('hidden');
-                fetchGoogleStyleAutocomplete(query);
-            });
-        });
 
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
@@ -564,200 +655,99 @@
             } else {
                 clearSearchBtn.classList.add('hidden');
                 suggestionsDropdown.classList.add('hidden');
-                lastSearchResults = [];
                 return;
             }
 
             clearTimeout(searchDebounce);
-            searchDebounce = setTimeout(() => fetchGoogleStyleAutocomplete(query), 200);
-        });
-
-        // Enter Key Handler for Google-Maps-style search & direct trigger
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const query = searchInput.value.trim();
-                if (!query) return;
-                suggestionsDropdown.classList.add('hidden');
-                
-                if (lastSearchResults && lastSearchResults.length > 0) {
-                    const topResult = lastSearchResults[0];
-                    const lat = parseFloat(topResult.lat);
-                    const lon = parseFloat(topResult.lon);
-                    selectDestination([lat, lon], topResult.display_name.split(',')[0], topResult.display_name);
-                    searchInput.value = topResult.display_name.split(',')[0];
-                } else {
-                    fetchGoogleStyleAutocomplete(query, true);
-                }
-            }
+            searchDebounce = setTimeout(() => fetchOptimizedGeocode(query), 300);
         });
 
         clearSearchBtn.addEventListener('click', () => {
             searchInput.value = '';
             clearSearchBtn.classList.add('hidden');
             suggestionsDropdown.classList.add('hidden');
-            lastSearchResults = [];
         });
 
-        // Enhanced Fuzzy Search & Substring Query Optimization for Nominatim
-        async function fetchGoogleStyleAutocomplete(query, autoSelectTop = false) {
-            const cacheKey = `${userCountryCode}_${userLocation[0].toFixed(2)}_${userLocation[1].toFixed(2)}_${query.toLowerCase()}`;
+        async function fetchOptimizedGeocode(query) {
+            const cacheKey = `${userCountryCode}_${query.toLowerCase()}`;
             if (searchCache.has(cacheKey)) {
-                const cachedData = searchCache.get(cacheKey);
-                lastSearchResults = cachedData;
-                renderGoogleStyleSuggestions(cachedData, query);
-                if (autoSelectTop && cachedData.length > 0) {
-                    const top = cachedData[0];
-                    selectDestination([parseFloat(top.lat), parseFloat(top.lon)], top.display_name.split(',')[0], top.display_name);
-                    searchInput.value = top.display_name.split(',')[0];
-                }
+                renderSuggestions(searchCache.get(cacheKey));
                 return;
             }
 
+            suggestionsList.innerHTML = '';
+            searchLoading.classList.remove('hidden');
+            suggestionsDropdown.classList.remove('hidden');
+
             try {
-                const lat = userLocation[0];
-                const lon = userLocation[1];
-                const viewbox = `${lon - 0.5},${lat + 0.5},${lon + 0.5},${lat - 0.5}`;
+                const headers = {
+                    'User-Agent': 'NaviFree/1.0 (AI-Powered Navigation Web App; educational-use)',
+                    'Accept': 'application/json'
+                };
 
-                // Enhanced query string parameters for partial/fuzzy matching across OSM tags
-                const params = `format=json&addressdetails=1&extratags=1&namedetails=1&limit=8`;
+                const localUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${userCountryCode.toLowerCase()}&limit=5`;
+                const globalUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
 
-                // 1. Direct Local Viewbox Search
-                const localUrl = `https://nominatim.openstreetmap.org/search?${params}&q=${encodeURIComponent(query)}&countrycodes=${userCountryCode.toLowerCase()}&viewbox=${viewbox}&bounded=1`;
-                // 2. Unbounded Countrywide Search
-                const fallbackCountryUrl = `https://nominatim.openstreetmap.org/search?${params}&q=${encodeURIComponent(query)}&countrycodes=${userCountryCode.toLowerCase()}`;
-                // 3. Substring / Token Split Fuzzy Search (e.g. "family store jasin" -> "family store" + "jasin")
-                const tokens = query.split(/\s+/).filter(t => t.length > 1);
-                const fuzzyQuery = tokens.length > 1 ? tokens.join(' ') : query;
-                const fuzzyUrl = `https://nominatim.openstreetmap.org/search?${params}&q=${encodeURIComponent(fuzzyQuery)}&countrycodes=${userCountryCode.toLowerCase()}`;
-
-                let res = await fetch(localUrl);
-                let data = await res.json();
+                const resLocal = await fetch(localUrl, { headers });
+                let data = await resLocal.json();
 
                 if (!data || data.length < 3) {
-                    const resCountry = await fetch(fallbackCountryUrl);
-                    const countryData = await resCountry.json();
-                    if (countryData && countryData.length > 0) {
-                        const existingIds = new Set((data || []).map(item => item.place_id));
-                        data = data || [];
-                        for (const item of countryData) {
-                            if (!existingIds.has(item.place_id)) data.push(item);
-                        }
-                    }
-                }
-
-                if (!data || data.length < 3) {
-                    const resFuzzy = await fetch(fuzzyUrl);
-                    const fuzzyData = await resFuzzy.json();
-                    if (fuzzyData && fuzzyData.length > 0) {
-                        const existingIds = new Set((data || []).map(item => item.place_id));
-                        data = data || [];
-                        for (const item of fuzzyData) {
-                            if (!existingIds.has(item.place_id)) data.push(item);
-                        }
-                    }
-                }
-
-                // Global Fallback
-                if (!data || data.length < 3) {
-                    const globalUrl = `https://nominatim.openstreetmap.org/search?${params}&q=${encodeURIComponent(query)}`;
-                    const resGlobal = await fetch(globalUrl);
+                    const resGlobal = await fetch(globalUrl, { headers });
                     const globalData = await resGlobal.json();
                     if (globalData && globalData.length > 0) {
                         const existingIds = new Set((data || []).map(item => item.place_id));
-                        data = data || [];
                         for (const item of globalData) {
-                            if (!existingIds.has(item.place_id)) data.push(item);
+                            if (!existingIds.has(item.place_id)) {
+                                data = data || [];
+                                data.push(item);
+                            }
                         }
                     }
                 }
 
-                searchCache.set(cacheKey, data || []);
-                lastSearchResults = data || [];
-                renderGoogleStyleSuggestions(data || [], query);
+                searchLoading.classList.add('hidden');
 
-                if (autoSelectTop && data && data.length > 0) {
-                    const top = data[0];
-                    selectDestination([parseFloat(top.lat), parseFloat(top.lon)], top.display_name.split(',')[0], top.display_name);
-                    searchInput.value = top.display_name.split(',')[0];
+                if (data && data.length > 0) {
+                    searchCache.set(cacheKey, data);
+                    renderSuggestions(data);
+                } else {
+                    suggestionsDropdown.classList.add('hidden');
+                    showToast('No results found', 'warning');
                 }
             } catch (err) {
-                console.error('Google Maps style autocomplete error:', err);
-                lastSearchResults = [];
+                console.error('Optimized geocoding error:', err);
+                searchLoading.classList.add('hidden');
+                suggestionsDropdown.classList.add('hidden');
+                showToast('Search failed. Please try again.', 'error');
             }
         }
 
-        // Google-Maps-Style Suggestions Renderer
-        function renderGoogleStyleSuggestions(items, query) {
+        function renderSuggestions(items) {
             suggestionsList.innerHTML = '';
-
-            // 1. Direct Keyword Search Query Item (Top of List)
-            const searchItemEl = document.createElement('div');
-            searchItemEl.className = 'p-3 hover:bg-slate-800/80 cursor-pointer transition flex items-center gap-3 text-slate-200 border-b border-slate-800/60';
-            searchItemEl.innerHTML = `
-                <div class="p-2 rounded-full bg-slate-800 text-blue-400">
-                    <i data-lucide="search" class="w-4 h-4"></i>
-                </div>
-                <div class="flex-1">
-                    <div class="text-xs font-bold text-slate-100">${query}</div>
-                    <div class="text-[10px] text-slate-400">Search map for "${query}"</div>
-                </div>
-            `;
-            searchItemEl.addEventListener('click', () => {
-                suggestionsDropdown.classList.add('hidden');
-                if (items && items.length > 0) {
-                    const top = items[0];
-                    selectDestination([parseFloat(top.lat), parseFloat(top.lon)], top.display_name.split(',')[0], top.display_name);
-                    searchInput.value = top.display_name.split(',')[0];
-                }
-            });
-            suggestionsList.appendChild(searchItemEl);
-
-            // 2. Render Fuzzy / Partial Matching Location POI Items
-            if (items && items.length > 0) {
-                items.forEach((item) => {
-                    const parts = item.display_name.split(',');
-                    const primaryTitle = parts[0];
-                    const secondarySubtitle = parts.slice(1).join(',').trim();
-
-                    // Determine place category / type for subtitle
-                    let placeCategory = item.type ? (item.type.charAt(0).toUpperCase() + item.type.slice(1)) : 'Point of Interest';
-                    if (item.class === 'shop') placeCategory = 'Store / Shop';
-                    if (item.class === 'amenity') placeCategory = 'Amenity / Landmark';
-
-                    const el = document.createElement('div');
-                    el.className = 'p-3 hover:bg-slate-800/80 cursor-pointer transition flex items-start gap-3';
-                    el.innerHTML = `
-                        <div class="p-2 rounded-full bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">
-                            <i data-lucide="map-pin" class="w-4 h-4"></i>
-                        </div>
-                        <div class="overflow-hidden flex-1">
-                            <div class="text-xs font-bold text-slate-100 truncate">${primaryTitle}</div>
-                            <div class="text-[10px] text-emerald-400 font-semibold truncate">${placeCategory}</div>
-                            <div class="text-[11px] text-slate-400 truncate">${secondarySubtitle}</div>
-                        </div>
-                    `;
-                    el.addEventListener('click', () => {
-                        const lat = parseFloat(item.lat);
-                        const lon = parseFloat(item.lon);
-                        selectDestination([lat, lon], primaryTitle, item.display_name);
-                        suggestionsDropdown.classList.add('hidden');
-                        searchInput.value = primaryTitle;
-                    });
-                    suggestionsList.appendChild(el);
+            searchLoading.classList.add('hidden');
+            items.slice(0, 6).forEach((item) => {
+                const el = document.createElement('div');
+                el.className = 'p-3 hover:bg-slate-800/80 cursor-pointer transition flex items-start gap-2.5';
+                el.innerHTML = `
+                    <i data-lucide="map-pin" class="w-4 h-4 text-blue-400 shrink-0 mt-0.5"></i>
+                    <div class="overflow-hidden">
+                        <div class="text-xs font-bold text-slate-200 truncate">${item.display_name.split(',')[0]}</div>
+                        <div class="text-[11px] text-slate-400 truncate">${item.display_name}</div>
+                    </div>
+                `;
+                el.addEventListener('click', () => {
+                    const lat = parseFloat(item.lat);
+                    const lon = parseFloat(item.lon);
+                    selectDestination([lat, lon], item.display_name.split(',')[0], item.display_name);
+                    suggestionsDropdown.classList.add('hidden');
+                    searchInput.value = item.display_name.split(',')[0];
                 });
-            } else {
-                // If no exact POI match is found in primary pass, offer custom geocoding entry
-                const noResultEl = document.createElement('div');
-                noResultEl.className = 'p-3 text-slate-400 text-xs italic text-center';
-                noResultEl.textContent = `Press Enter to search map for "${query}"`;
-                suggestionsList.appendChild(noResultEl);
-            }
-
+                suggestionsList.appendChild(el);
+            });
             lucide.createIcons();
             suggestionsDropdown.classList.remove('hidden');
         }
 
-        // Map Click to Set Destination
         map.on('click', (e) => {
             if (isNavigating || isSimulating) return;
             const coords = [e.lngLat.lat, e.lngLat.lng];
@@ -784,10 +774,15 @@
             document.getElementById('dest-address').textContent = fullAddress;
             document.getElementById('route-card').classList.remove('hidden');
 
+            isRouteCardCollapsed = false;
+            document.getElementById('route-card-body').classList.remove('hidden');
+            document.getElementById('card-collapse-icon').classList.remove('rotate-180');
+            updateMapControlsPosition();
+            updateSpeedTrackerPosition();
+
             await calculateRoutes(userLocation, coords);
         }
 
-        // Generate distinct alternative path for Toll-Free route (avoiding tolls / different corridor)
         function generateAlternativePath(start, end) {
             const midLat = (start[0] + end[0]) / 2;
             const midLng = (start[1] + end[1]) / 2;
@@ -805,6 +800,14 @@
         }
 
         async function calculateRoutes(start, end) {
+            const routeLoading = document.getElementById('route-loading');
+            const routeBodyContent = document.querySelectorAll('#route-card-body > :not(#route-loading)');
+            
+            if (routeLoading) routeLoading.classList.remove('hidden');
+            routeBodyContent.forEach(el => {
+                if (el.id !== 'route-loading') el.style.opacity = '0.4';
+            });
+
             const urlFastest = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true`;
             const altVia = generateAlternativePath(start, end)[1];
             const urlTollFree = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${altVia[0]},${altVia[1]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true`;
@@ -815,7 +818,10 @@
                     fetch(urlTollFree).then(r => r.json()).catch(() => null)
                 ]);
 
-                if (!resFastest.routes || resFastest.routes.length === 0) return;
+                if (!resFastest.routes || resFastest.routes.length === 0) {
+                    showToast('Could not calculate route. Try another location.', 'error');
+                    return;
+                }
 
                 routeData.fastest = resFastest.routes[0];
 
@@ -830,8 +836,15 @@
                 }
 
                 updateRouteDisplay();
+                showToast('Routes ready', 'success');
             } catch (err) {
                 console.error('Route calculation error:', err);
+                showToast('Route calculation failed. Check connection.', 'error');
+            } finally {
+                if (routeLoading) routeLoading.classList.add('hidden');
+                routeBodyContent.forEach(el => {
+                    if (el.id !== 'route-loading') el.style.opacity = '1';
+                });
             }
         }
 
@@ -854,7 +867,6 @@
                 detourBadge.classList.add('hidden');
             }
 
-            // Traffic status analysis
             const avgSpeedKmh = route.distance > 0 ? (route.distance / route.duration) * 3.6 : 40;
             let trafficText = 'Live Traffic: Clear Flow';
             let trafficColor = 'text-emerald-400';
@@ -882,7 +894,6 @@
             fitOverviewBounds();
         }
 
-        // Use Case 1: Zoom out to overview bounds to compare Fastest vs Toll-Free
         function fitOverviewBounds() {
             const bounds = new maplibregl.LngLatBounds();
             bounds.extend(toLngLat(userLocation));
@@ -902,7 +913,6 @@
             });
         }
 
-        // Use Case 3: Display Fastest and Toll-Free in different colors simultaneously
         function drawRoutesOnMap() {
             ['route-inactive', 'route-active'].forEach(id => {
                 if (map.getLayer(id)) map.removeLayer(id);
@@ -911,7 +921,7 @@
 
             const activeRoute = activeRouteType === 'fastest' ? routeData.fastest : routeData.tollFree;
             const inactiveRoute = activeRouteType === 'fastest' ? routeData.tollFree : routeData.fastest;
-            const activeColor = activeRouteType === 'fastest' ? '#3b82f6' : '#10b981'; // Blue for Fastest, Emerald for Toll-Free
+            const activeColor = activeRouteType === 'fastest' ? '#3b82f6' : '#10b981';
 
             if (inactiveRoute && inactiveRoute.geometry) {
                 map.addSource('route-inactive', {
@@ -1001,22 +1011,43 @@
             chevron.classList.toggle('rotate-180');
         });
 
-        // Bottom card collapse/expand functionality with map controls stickiness
+        function updateMapControlsPosition() {
+            const mapControls = document.getElementById('map-controls');
+            if (!mapControls) return;
+
+            if (window.innerWidth >= 768) {
+                if (isRouteCardCollapsed) {
+                    mapControls.style.bottom = '110px';
+                    mapControls.style.top = 'auto';
+                } else {
+                    mapControls.style.bottom = '390px';
+                    mapControls.style.top = 'auto';
+                }
+            } else {
+                mapControls.style.bottom = '';
+                mapControls.style.top = '';
+            }
+        }
+
         document.getElementById('btn-collapse-card').addEventListener('click', () => {
             isRouteCardCollapsed = !isRouteCardCollapsed;
             const body = document.getElementById('route-card-body');
             const collapseIcon = document.getElementById('card-collapse-icon');
-            const mapControls = document.getElementById('map-controls');
-            
+
             if (isRouteCardCollapsed) {
                 body.classList.add('hidden');
                 collapseIcon.classList.add('rotate-180');
-                if (mapControls) mapControls.style.bottom = '110px';
             } else {
                 body.classList.remove('hidden');
                 collapseIcon.classList.remove('rotate-180');
-                if (mapControls) mapControls.style.bottom = '390px';
             }
+            updateMapControlsPosition();
+            updateSpeedTrackerPosition();
+        });
+
+        window.addEventListener('resize', () => {
+            updateMapControlsPosition();
+            updateSpeedTrackerPosition();
         });
 
         document.getElementById('btn-close-route').addEventListener('click', stopNavigation);
@@ -1037,6 +1068,10 @@
             document.getElementById('btn-exit-nav').classList.remove('hidden');
             document.getElementById('btn-exit-nav').classList.add('flex');
 
+            // Change marker to navigation arrow
+            setUserMarkerMode(true);
+            updateSpeedTrackerPosition();
+
             map.flyTo({ center: toLngLat(userLocation), zoom: 17, essential: true });
             if (voiceEnabled) speakInstruction("Navigation started. Follow highlighted route.");
 
@@ -1050,10 +1085,13 @@
             let stepIdx = 0;
             let currentStepIndex = 0;
 
+            if (simulationInterval) clearInterval(simulationInterval);
+
             simulationInterval = setInterval(() => {
                 if (stepIdx >= coords.length) {
                     stopNavigation();
                     if (voiceEnabled) speakInstruction("You have arrived at your destination.");
+                    showToast('Arrived at destination', 'success');
                     return;
                 }
 
@@ -1082,7 +1120,10 @@
         function stopNavigation() {
             isNavigating = false;
             isSimulating = false;
-            if (simulationInterval) clearInterval(simulationInterval);
+            if (simulationInterval) {
+                clearInterval(simulationInterval);
+                simulationInterval = null;
+            }
 
             document.getElementById('navigation-hud').classList.add('hidden');
             document.getElementById('route-card').classList.add('hidden');
@@ -1091,15 +1132,25 @@
             document.getElementById('btn-exit-nav').classList.add('hidden');
             document.getElementById('btn-exit-nav').classList.remove('flex');
             
-            const mapControls = document.getElementById('map-controls');
-            if (mapControls) mapControls.style.bottom = '110px';
+            isRouteCardCollapsed = false;
+            updateMapControlsPosition();
 
-            map.flyTo({ center: toLngLat(userLocation), zoom: 13 });
-            if (destMarker) destMarker.remove();
+            // Restore pulse marker and default speed tracker position
+            setUserMarkerMode(false);
+            updateSpeedTrackerPosition();
+
+            map.flyTo({ center: toLngLat(userLocation), zoom: 13, pitch: is3DView ? 60 : 0, bearing: is3DView ? 25 : 0 });
+            if (destMarker) {
+                destMarker.remove();
+                destMarker = null;
+            }
             ['route-inactive', 'route-active'].forEach(id => {
                 if (map.getLayer(id)) map.removeLayer(id);
                 if (map.getSource(id)) map.removeSource(id);
             });
+
+            currentDestination = null;
+            routeData = { fastest: null, tollFree: null };
         }
 
         document.getElementById('btn-recenter').addEventListener('click', () => {
@@ -1115,10 +1166,12 @@
 
             const themeIcon = document.getElementById('theme-icon');
             if (currentMapStyle === 'dark') {
-                themeIcon.className = 'w-5 h-5 text-amber-400';
+                themeIcon.className = 'w-4 h-4 sm:w-5 sm:h-5 text-amber-400';
             } else {
-                themeIcon.className = 'w-5 h-5 text-indigo-400';
+                themeIcon.className = 'w-4 h-4 sm:w-5 sm:h-5 text-indigo-400';
             }
+            savePreferences();
+            showToast(currentMapStyle === 'dark' ? 'Dark theme' : 'Light theme', 'info');
         });
 
         document.getElementById('btn-voice').addEventListener('click', () => {
@@ -1127,27 +1180,29 @@
             const btn = document.getElementById('btn-voice');
             
             if (voiceEnabled) {
-                btn.className = 'p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center';
+                btn.className = 'p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl text-slate-200 shadow-xl transition active:scale-95 flex items-center justify-center';
                 icon.setAttribute('data-lucide', 'volume-2');
-                icon.className = 'w-5 h-5 text-purple-400';
+                icon.className = 'w-4 h-4 sm:w-5 sm:h-5 text-purple-400';
                 speakInstruction("Voice announcements enabled.");
+                showToast('Voice enabled', 'success');
             } else {
-                btn.className = 'p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-red-500/60 rounded-xl text-red-200 shadow-xl transition active:scale-95 flex items-center justify-center';
+                btn.className = 'p-2.5 sm:p-3 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-red-500/60 rounded-xl text-red-200 shadow-xl transition active:scale-95 flex items-center justify-center';
                 icon.setAttribute('data-lucide', 'volume-x');
-                icon.className = 'w-5 h-5 text-red-400';
-                speakInstruction("Voice announcements disabled.");
+                icon.className = 'w-4 h-4 sm:w-5 sm:h-5 text-red-400';
+                showToast('Voice disabled', 'info');
             }
             lucide.createIcons();
+            savePreferences();
         });
 
         function speakInstruction(text) {
             if ('speechSynthesis' in window && voiceEnabled) {
+                window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 window.speechSynthesis.speak(utterance);
             }
         }
 
-        // Gemini AI Assistant Integration
         const aiModal = document.getElementById('ai-chat-modal');
         const aiTrigger = document.getElementById('btn-ai-trigger');
         const aiClose = document.getElementById('btn-close-ai');
@@ -1160,7 +1215,7 @@
 
         document.querySelectorAll('.ai-chip').forEach(chip => {
             chip.addEventListener('click', () => {
-                aiInput.value = chip.textContent.trim().replace(/^[\u1F300-\u1F9FF]/, '');
+                aiInput.value = chip.textContent.trim().replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}]\s*/u, '');
                 aiForm.dispatchEvent(new Event('submit'));
             });
         });
@@ -1185,9 +1240,17 @@
             }
         });
 
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         function appendChatMessage(sender, message) {
             const msgEl = document.createElement('div');
             msgEl.className = `flex gap-2.5 items-start ${sender === 'user' ? 'justify-end' : ''}`;
+
+            const safeMessage = escapeHtml(message);
 
             if (sender === 'ai') {
                 msgEl.innerHTML = `
@@ -1195,16 +1258,20 @@
                         <i data-lucide="sparkles" class="w-4 h-4"></i>
                     </div>
                     <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl rounded-tl-none p-3 text-slate-200">
-                        ${message}
-                        <button onclick="speakInstruction('${message.replace(/<\/?[^>]+(>|$)/g, "").replace(/'/g, "\\'")}')" class="mt-2 text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold">
+                        <span class="ai-message-text">${safeMessage}</span>
+                        <button class="ai-speak-btn mt-2 text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold">
                             <i data-lucide="volume-2" class="w-3 h-3"></i> Listen
                         </button>
                     </div>
                 `;
+                const speakBtn = msgEl.querySelector('.ai-speak-btn');
+                if (speakBtn) {
+                    speakBtn.addEventListener('click', () => speakInstruction(message));
+                }
             } else {
                 msgEl.innerHTML = `
                     <div class="bg-blue-600 text-white rounded-2xl rounded-tr-none p-3 max-w-[80%]">
-                        ${message}
+                        ${safeMessage}
                     </div>
                 `;
             }
@@ -1239,8 +1306,8 @@
         }
 
         async function callGeminiAPI(promptText) {
-            const apiKey = ""; // API Key handled by runtime context
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            const apiKey = ""; // API Key handled by runtime context / backend
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
             const routeContext = currentDestination ? 
                 `Current destination selected near coordinates ${currentDestination[0]}, ${currentDestination[1]}. Active route mode is ${activeRouteType}.` : 
@@ -1259,9 +1326,78 @@
                 body: JSON.stringify(payload)
             });
 
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+
             const result = await response.json();
             return result.candidates?.[0]?.content?.parts?.[0]?.text || "I'm ready to help you navigate!";
         }
+
+        // ===== Compass (points to North) =====
+        let currentHeading = 0;
+        let compassSupported = false;
+
+        function updateCompassIcon(heading) {
+            const icon = document.getElementById('compass-icon');
+            if (!icon) return;
+            // Rotate so the icon always points to true North
+            const rotation = -heading;
+            icon.style.transform = `rotate(${rotation}deg)`;
+        }
+
+        function handleOrientation(event) {
+            let heading = null;
+            if (event.webkitCompassHeading !== undefined) {
+                // iOS
+                heading = event.webkitCompassHeading;
+            } else if (event.alpha !== null) {
+                // Android / standard
+                heading = 360 - event.alpha;
+            }
+            if (heading !== null && !isNaN(heading)) {
+                currentHeading = heading;
+                updateCompassIcon(heading);
+            }
+        }
+
+        function initCompass() {
+            if (window.DeviceOrientationEvent) {
+                // Request permission on iOS 13+
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    document.getElementById('btn-compass').addEventListener('click', async () => {
+                        try {
+                            const permission = await DeviceOrientationEvent.requestPermission();
+                            if (permission === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation, true);
+                                compassSupported = true;
+                                showToast('Compass enabled', 'success');
+                            } else {
+                                showToast('Compass permission denied', 'warning');
+                            }
+                        } catch (err) {
+                            showToast('Compass not available', 'warning');
+                        }
+                    }, { once: true });
+                } else {
+                    // Non-iOS: listen immediately
+                    window.addEventListener('deviceorientation', handleOrientation, true);
+                    compassSupported = true;
+                }
+            }
+
+            // Click also resets map bearing to North
+            document.getElementById('btn-compass').addEventListener('click', () => {
+                map.easeTo({ bearing: 0, duration: 600 });
+                if (compassSupported) {
+                    showToast('Map oriented to North', 'info');
+                }
+            });
+        }
+
+        initCompass();
+        // Initial position update
+        updateSpeedTrackerPosition();
     </script>
 </body>
 </html>

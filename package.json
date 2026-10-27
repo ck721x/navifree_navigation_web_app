@@ -1,0 +1,14 @@
+{
+  "name": "navifree-navigation-web-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Privacy-first navigation web app with server-side provider proxies.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  }
+}
