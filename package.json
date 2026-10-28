@@ -1,0 +1,23 @@
+{
+  "name": "navifree",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "npm run build:shared && concurrently -k -n web,api \"npm run dev -w @navifree/web\" \"npm run dev -w @navifree/api\"",
+    "build:shared": "npm run build -w @navifree/core && npm run build -w @navifree/api-client",
+    "build": "npm run build:shared && npm run build -w @navifree/api && npm run build -w @navifree/web",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "npm run build:shared && npm run build -w @navifree/api && node --test tests/*.test.cjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.39.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.46.0"
+  }
+}
